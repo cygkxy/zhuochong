@@ -74,3 +74,9 @@ pyinstaller Rainbow桌宠.spec
 ## 许可证
 
 MIT
+
+---
+
+## 更新日志
+
+详见 [CHANGELOG.md](CHANGELOG.md)。

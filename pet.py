@@ -119,6 +119,30 @@ SPEECHES = [
 TRANSPARENT_COLOR = "#000001"  # 透明色
 WINDOW_SIZE = 240  # 窗口固定尺寸（画布大小）
 
+# ─── 主题色（低对比半透明感） ─────────────────────
+THEME = {
+    'bg': '#0f111a',
+    'surface': '#161b28',
+    'surface_hover': '#1c2333',
+    'surface_active': '#1e293b',
+    'accent': '#22d3ee',
+    'accent_hover': '#38e0ff',
+    'accent_dark': '#0891b2',
+    'accent2': '#7c3aed',
+    'accent3': '#06b6d4',
+    'text': '#e2e8f0',
+    'text_sec': '#8892a8',
+    'text_muted': '#3d4a5c',
+    'border': '#1a2230',
+    'border_light': '#232e3e',
+    'input_bg': '#0d1117',
+    'success': '#10b981',
+    'danger': '#ef4444',
+    'warning': '#f59e0b',
+    'scrollbar_bg': '#0f111a',
+    'scrollbar_fg': '#1a2230',
+}
+
 
 # ─── GIF 帧加载器 ──────────────────────────────
 
@@ -278,7 +302,7 @@ class DesktopPet:
         )
         self.canvas.pack()
 
-        # 宠物图像（居中，按 self.size 缩放）
+        # 宠物图像（居中）
         self.img_on_canvas = self.canvas.create_image(
             WINDOW_SIZE // 2, WINDOW_SIZE // 2,
             anchor='center',
@@ -294,41 +318,47 @@ class DesktopPet:
         self._build_settings()
 
     def _build_context_menu(self):
-        """构建右键菜单"""
+        """构建右键菜单（圆角毛玻璃风格）"""
         self.menu_win = tk.Toplevel(self.root)
         self.menu_win.overrideredirect(True)
         self.menu_win.attributes('-topmost', True)
         self.menu_win.withdraw()
-        self.menu_win.configure(bg='#2a2a3a')
+
+        # 外框
+        outer = tk.Frame(self.menu_win, bg=THEME['border'], bd=1, relief='flat')
+        outer.pack()
+        inner = tk.Frame(outer, bg=THEME['surface'], bd=0)
+        inner.pack(padx=1, pady=1, fill='both', expand=True)
 
         items = [
-            ("🚶 散步模式", self.toggle_walk),
-            ("👆 跟随鼠标", self.toggle_follow),
-            ("💃 跳舞", lambda: self.switch_gif(13)),
-            ("───", None),
-            ("💬 对话", self.show_chat),
-            ("⏭️ 切换动作", self.next_anim),
-            ("🎲 随机表情", self.random_anim),
-            ("───", None),
-            ("⚙️ 设置", self.toggle_settings),
-            ("───", None),
-            ("👋 退出", self.quit),
+            ("🚶  散步模式", self.toggle_walk),
+            ("👆  跟随鼠标", self.toggle_follow),
+            ("💃  跳舞", lambda: self.switch_gif(13)),
+            None,  # separator
+            ("💬  对话", self.show_chat),
+            ("⏭️  切换动作", self.next_anim),
+            ("🎲  随机表情", self.random_anim),
+            None,
+            ("⚙️  设置", self.toggle_settings),
+            None,
+            ("👋  退出", self.quit),
         ]
 
-        for text, cmd in items:
-            if text == "───":
-                frame = tk.Frame(self.menu_win, height=1, bg='#3a3a4a')
-                frame.pack(fill='x', padx=8, pady=2)
+        for item in items:
+            if item is None:
+                sep = tk.Frame(inner, height=1, bg=THEME['border'])
+                sep.pack(fill='x', padx=10, pady=3)
             else:
+                text, cmd = item
                 btn = tk.Label(
-                    self.menu_win, text=text,
-                    fg='white', bg='#2a2a3a',
-                    font=("Microsoft YaHei", 11),
-                    cursor="hand2", padx=16, pady=6,
+                    inner, text=text,
+                    fg=THEME['text'], bg=THEME['surface'],
+                    font=("Microsoft YaHei", 10),
+                    cursor="hand2", padx=18, pady=7, anchor='w',
                 )
                 btn.pack(fill='x')
-                btn.bind('<Enter>', lambda e, b=btn: b.configure(bg='#3a3a5a'))
-                btn.bind('<Leave>', lambda e, b=btn: b.configure(bg='#2a2a3a'))
+                btn.bind('<Enter>', lambda e, b=btn: b.configure(bg=THEME['surface_hover']))
+                btn.bind('<Leave>', lambda e, b=btn: b.configure(bg=THEME['surface']))
                 btn.bind('<Button-1>', lambda e, c=cmd: self._menu_action(c))
 
     def _build_settings(self):
@@ -337,32 +367,42 @@ class DesktopPet:
         self.settings_win.overrideredirect(True)
         self.settings_win.attributes('-topmost', True)
         self.settings_win.withdraw()
-        self.settings_win.configure(bg='#1a1a2e')
+        self.settings_win.configure(bg=THEME['border'])
 
         w, h = 340, 500
         self.settings_win.geometry(f"{w}x{h}")
 
+        # 内容容器
+        inner_root = tk.Frame(self.settings_win, bg=THEME['bg'])
+        inner_root.pack(fill='both', expand=True, padx=1, pady=1)
+
         # 标题
-        title = tk.Label(
-            self.settings_win, text="⚙️ 桌宠设置",
-            fg='white', bg='#1a1a2e',
-            font=("Microsoft YaHei", 13, "bold"),
-        )
-        title.pack(pady=(12, 6))
+        title_frame = tk.Frame(inner_root, bg=THEME['bg'])
+        title_frame.pack(fill='x', pady=(14, 2))
+        tk.Label(title_frame, text="⚙️  桌宠设置",
+                 fg=THEME['text'], bg=THEME['bg'],
+                 font=("Microsoft YaHei", 14, "bold")).pack()
+        # 标题下面的 accent 线
+        accent_line = tk.Frame(inner_root, height=2, bg=THEME['accent'])
+        accent_line.pack(fill='x', padx=40, pady=(4, 6))
 
         # 可滚动区域
-        scroll_container = tk.Frame(self.settings_win, bg='#1a1a2e')
+        scroll_container = tk.Frame(inner_root, bg=THEME['bg'])
         scroll_container.pack(fill='both', expand=True, padx=8)
 
-        scroll_canvas = tk.Canvas(scroll_container, bg='#1a1a2e',
+        scroll_canvas = tk.Canvas(scroll_container, bg=THEME['bg'],
                                    highlightthickness=0, bd=0)
         scrollbar = tk.Scrollbar(scroll_container, orient='vertical',
-                                  command=scroll_canvas.yview)
+                                  command=scroll_canvas.yview,
+                                  bg=THEME['scrollbar_bg'],
+                                  troughcolor=THEME['scrollbar_bg'],
+                                  activebackground=THEME['scrollbar_fg'],
+                                  width=10)
         scroll_canvas.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side='right', fill='y')
         scroll_canvas.pack(side='left', fill='both', expand=True)
 
-        inner_frame = tk.Frame(scroll_canvas, bg='#1a1a2e')
+        inner_frame = tk.Frame(scroll_canvas, bg=THEME['bg'])
         scroll_canvas.create_window((0, 0), window=inner_frame, anchor='nw')
         def _on_inner_configure(ev):
             scroll_canvas.configure(scrollregion=scroll_canvas.bbox('all'))
@@ -372,72 +412,93 @@ class DesktopPet:
         scroll_canvas.bind('<Enter>', lambda e: scroll_canvas.bind_all('<MouseWheel>', _on_mousewheel))
         scroll_canvas.bind('<Leave>', lambda e: scroll_canvas.unbind_all('<MouseWheel>'))
 
+        def _section_header(text):
+            """带左侧色条的 section 标题"""
+            hdr = tk.Frame(inner_frame, bg=THEME['bg'])
+            hdr.pack(fill='x', pady=(10, 2))
+            bar = tk.Frame(hdr, width=3, bg=THEME['accent'])
+            bar.pack(side='left', fill='y', padx=(2, 6))
+            tk.Label(hdr, text=text, fg=THEME['accent'], bg=THEME['bg'],
+                     font=("Microsoft YaHei", 10, "bold"), anchor='w').pack(side='left', fill='x')
+
+        def _make_row():
+            """创建设置行容器"""
+            r = tk.Frame(inner_frame, bg=THEME['surface'])
+            r.pack(fill='x', pady=2, padx=2)
+            return r
+
+        def _row_label(parent, text, width=7):
+            tk.Label(parent, text=text, fg=THEME['text_sec'], bg=THEME['surface'],
+                     font=("Microsoft YaHei", 10), width=width, anchor='w').pack(side='left', padx=(10, 4))
+
+        def _value_label(parent, width=3):
+            lbl = tk.Label(parent, text='', fg=THEME['text_muted'], bg=THEME['surface'],
+                           font=("Microsoft YaHei", 9), width=width, anchor='e')
+            lbl.pack(side='right', padx=(0, 10))
+            return lbl
+
+        def _styled_entry(parent, var, width=14, **kw):
+            """带边框的输入框"""
+            ef = tk.Frame(parent, bg=THEME['border_light'], bd=1, relief='flat')
+            ef.pack(side='left', fill='x', expand=True, padx=(0, 10))
+            entry = tk.Entry(ef, textvariable=var,
+                             bg=THEME['input_bg'], fg=THEME['text'], bd=2,
+                             font=kw.get('font', ("Microsoft YaHei", 10)),
+                             width=width, justify=kw.get('justify', 'left'),
+                             insertbackground=THEME['text'],
+                             highlightthickness=0, relief='flat')
+            entry.pack(fill='x', padx=2, pady=2)
+            return entry
+
         # ─── 通用设置 ───
-        sec1 = tk.Label(inner_frame, text="通用", fg='#8888ff', bg='#1a1a2e',
-                        font=("Microsoft YaHei", 9, "bold"), anchor='w')
-        sec1.pack(fill='x', pady=(6, 2))
+        _section_header("通用")
 
         # 大小
-        row1 = tk.Frame(inner_frame, bg='#1a1a2e')
-        row1.pack(fill='x', pady=3)
-        tk.Label(row1, text="大小", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r1 = _make_row()
+        _row_label(r1, "大小")
         self.size_var = tk.IntVar(value=self.size)
-        s = ttk.Scale(row1, from_=50, to=250, orient='horizontal',
+        s = ttk.Scale(r1, from_=50, to=250, orient='horizontal',
                        variable=self.size_var, command=self._on_resize)
-        s.pack(side='left', fill='x', expand=True, padx=(0, 8))
-        self.size_label = tk.Label(row1, text=str(self.size), fg='#888', bg='#1a1a2e',
-                                   font=("Microsoft YaHei", 9), width=3)
-        self.size_label.pack(side='right')
+        s.pack(side='left', fill='x', expand=True, padx=(4, 4))
+        self.size_label = _value_label(r1)
+        self.size_label.configure(text=str(self.size))
 
         # 速度
-        row2 = tk.Frame(inner_frame, bg='#1a1a2e')
-        row2.pack(fill='x', pady=3)
-        tk.Label(row2, text="速度", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r2 = _make_row()
+        _row_label(r2, "速度")
         self.speed_var = tk.IntVar(value=self.speed)
-        ttk.Scale(row2, from_=1, to=10, orient='horizontal',
+        ttk.Scale(r2, from_=1, to=10, orient='horizontal',
                   variable=self.speed_var, command=self._on_speed).pack(
-            side='left', fill='x', expand=True, padx=(0, 8))
+            side='left', fill='x', expand=True, padx=(4, 4))
 
-        # 自动漫游
-        row3 = tk.Frame(inner_frame, bg='#1a1a2e')
-        row3.pack(fill='x', pady=3)
-        tk.Label(row3, text="自动漫游", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        # 自动漫游 + 切换间隔
+        r3 = _make_row()
+        _row_label(r3, "自动漫游")
         self.walk_var = tk.BooleanVar(value=self.auto_walk)
-        cb = tk.Checkbutton(row3, variable=self.walk_var,
-                            bg='#1a1a2e', fg='white', selectcolor='#2a2a4a',
+        cb = tk.Checkbutton(r3, variable=self.walk_var,
+                            bg=THEME['surface'], fg=THEME['text'],
+                            selectcolor=THEME['bg'],
+                            activebackground=THEME['surface'],
                             command=self._on_auto_walk)
-        cb.pack(side='left')
+        cb.pack(side='left', padx=(4, 0))
 
-        # 切换间隔
-        row4 = tk.Frame(inner_frame, bg='#1a1a2e')
-        row4.pack(fill='x', pady=3)
-        tk.Label(row4, text="切换间隔", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r4 = _make_row()
+        _row_label(r4, "切换间隔")
         self.interval_var = tk.StringVar(value=str(self.switch_interval // 1000))
-        intervals = [("3秒", "3000"), ("5秒", "5000"), ("8秒", "8000"), ("15秒", "15000")]
-        menu = ttk.Combobox(row4, values=[i[0] for i in intervals],
+        intervals = ["3秒", "5秒", "8秒", "15秒"]
+        menu = ttk.Combobox(r4, values=intervals,
                             state='readonly', width=10)
         menu.current(1)
         menu.bind('<<ComboboxSelected>>',
                   lambda e: self._on_interval(menu.get()))
-        menu.pack(side='left')
+        menu.pack(side='left', padx=(4, 0))
 
-        # --- Bubble settings ---
-        sep_b = tk.Frame(inner_frame, height=1, bg='#2a2a4a')
-        sep_b.pack(fill='x', pady=6)
-
-        sec_b = tk.Label(inner_frame, text="气泡", fg='#8888ff', bg='#1a1a2e',
-                         font=("Microsoft YaHei", 9, "bold"), anchor='w')
-        sec_b.pack(fill='x', pady=(0, 2))
+        # ─── 气泡 ───
+        _section_header("气泡")
 
         # 气泡颜色
-        row_bc = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_bc.pack(fill='x', pady=3)
-        tk.Label(row_bc, text="气泡颜色", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r5 = _make_row()
+        _row_label(r5, "颜色")
         colors = {"紫色": "#2a2a4a", "蓝色": "#1a3a6a", "绿色": "#1a4a2a",
                   "红色": "#5a2a2a", "粉色": "#5a2a4a", "橙色": "#5a3a1a",
                   "青色": "#1a4a4a", "深灰": "#333333"}
@@ -447,14 +508,17 @@ class DesktopPet:
                 current_color_name = name
                 break
         self.bubble_color_var = tk.StringVar(value=current_color_name)
-        color_opts = ttk.Combobox(row_bc, textvariable=self.bubble_color_var,
+        color_opts = ttk.Combobox(r5, textvariable=self.bubble_color_var,
                                    values=list(colors.keys()),
                                    state='readonly', width=10)
-        color_opts.pack(side='left')
-        self.color_preview = tk.Canvas(row_bc, width=20, height=20,
+        color_opts.pack(side='left', padx=(4, 4))
+        # 颜色预览圆块
+        preview_frame = tk.Frame(r5, bg=THEME['border_light'], bd=1, relief='flat')
+        preview_frame.pack(side='left')
+        self.color_preview = tk.Canvas(preview_frame, width=18, height=18,
                                         bg=colors[current_color_name],
                                         highlightthickness=0, bd=0)
-        self.color_preview.pack(side='left', padx=(6, 0))
+        self.color_preview.pack(padx=1, pady=1)
         def on_color_change(*a):
             c = colors.get(self.bubble_color_var.get(), '#2a2a4a')
             self.color_preview.configure(bg=c)
@@ -464,10 +528,8 @@ class DesktopPet:
         self.bubble_color_var.trace_add('write', on_color_change)
 
         # 气泡字数
-        row_bl = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_bl.pack(fill='x', pady=3)
-        tk.Label(row_bl, text="最大字数", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r6 = _make_row()
+        _row_label(r6, "最大字数")
         self.bubble_len_var = tk.IntVar(value=self.bubble_text_max)
         def on_len_change(val):
             v = int(float(val))
@@ -475,176 +537,151 @@ class DesktopPet:
             self.bubble_text_max = v
             self.config['bubble_text_max'] = v
             self.save_config()
-        len_scale = ttk.Scale(row_bl, from_=20, to=200, orient='horizontal',
+        len_scale = ttk.Scale(r6, from_=20, to=200, orient='horizontal',
                               variable=self.bubble_len_var, command=on_len_change)
-        len_scale.pack(side='left', fill='x', expand=True, padx=(0, 8))
-        self.bubble_len_label = tk.Label(row_bl, text=str(self.bubble_text_max),
-                                         fg='#888', bg='#1a1a2e',
-                                         font=("Microsoft YaHei", 9), width=3)
-        self.bubble_len_label.pack(side='right')
+        len_scale.pack(side='left', fill='x', expand=True, padx=(4, 4))
+        self.bubble_len_label = _value_label(r6)
+        self.bubble_len_label.configure(text=str(self.bubble_text_max))
 
         # 对话快捷键
-        row_ck = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_ck.pack(fill='x', pady=3)
-        tk.Label(row_ck, text="快捷键", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r7 = _make_row()
+        _row_label(r7, "快捷键")
+        key_ef = tk.Frame(r7, bg=THEME['border_light'], bd=1, relief='flat')
+        key_ef.pack(side='left', padx=(4, 0))
         self.chat_key_var = tk.StringVar(value=self.chat_key)
-        key_entry = tk.Entry(row_ck, textvariable=self.chat_key_var,
-                             bg='#2a2a3a', fg='white', bd=0,
-                             font=("Microsoft YaHei", 11),
-                             width=4, justify='center',
-                             insertbackground='white')
-        key_entry.pack(side='left')
-        tk.Label(row_ck, text="（按一个键）", fg='#666', bg='#1a1a2e',
+        key_entry = tk.Entry(key_ef, textvariable=self.chat_key_var,
+                             bg=THEME['input_bg'], fg=THEME['text'], bd=0,
+                             font=("Microsoft YaHei", 12, "bold"),
+                             width=3, justify='center',
+                             insertbackground=THEME['text'])
+        key_entry.pack(padx=2, pady=2)
+        tk.Label(r7, text="（按一个键）", fg=THEME['text_muted'], bg=THEME['surface'],
                  font=("Microsoft YaHei", 9)).pack(side='left', padx=(6, 0))
 
-        # --- Active / Search ---
-        sep_p = tk.Frame(inner_frame, height=1, bg='#2a2a4a')
-        sep_p.pack(fill='x', pady=6)
-
-        sec_p = tk.Label(inner_frame, text="自主行为", fg='#8888ff', bg='#1a1a2e',
-                         font=("Microsoft YaHei", 9, "bold"), anchor='w')
-        sec_p.pack(fill='x', pady=(0, 2))
+        # ─── 自主行为 ───
+        _section_header("自主行为")
 
         # 主动说话
-        row_pc = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_pc.pack(fill='x', pady=3)
-        tk.Label(row_pc, text="主动说话", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r8 = _make_row()
+        _row_label(r8, "主动说话")
         self.proactive_var = tk.BooleanVar(value=self.proactive_chat)
-        cb_pc = tk.Checkbutton(row_pc, variable=self.proactive_var,
-                               bg='#1a1a2e', fg='white', selectcolor='#2a2a4a',
+        cb_pc = tk.Checkbutton(r8, variable=self.proactive_var,
+                               bg=THEME['surface'], fg=THEME['text'],
+                               selectcolor=THEME['bg'],
+                               activebackground=THEME['surface'],
                                command=self._on_proactive_toggle)
-        cb_pc.pack(side='left')
+        cb_pc.pack(side='left', padx=(4, 0))
         # 随机间隔
         self.proactive_rand_var = tk.BooleanVar(value=self.proactive_random)
-        cb_rand = tk.Checkbutton(row_pc, variable=self.proactive_rand_var,
-                                 bg='#1a1a2e', fg='white', selectcolor='#2a2a4a',
+        cb_rand = tk.Checkbutton(r8, variable=self.proactive_rand_var,
+                                 bg=THEME['surface'], fg=THEME['text'],
+                                 selectcolor=THEME['bg'],
+                                 activebackground=THEME['surface'],
                                  command=self._on_proactive_rand_toggle)
-        cb_rand.pack(side='left', padx=(4, 0))
-        tk.Label(row_pc, text="随机", fg='#888', bg='#1a1a2e',
+        cb_rand.pack(side='left', padx=(2, 0))
+        tk.Label(r8, text="随机", fg=THEME['text_muted'], bg=THEME['surface'],
                  font=("Microsoft YaHei", 9)).pack(side='left')
-        # 固定间隔（非随机时用）
-        tk.Label(row_pc, text="定时间隔(秒)", fg='#888', bg='#1a1a2e',
+        # 固定间隔
+        tk.Label(r8, text="间隔(秒)", fg=THEME['text_muted'], bg=THEME['surface'],
                  font=("Microsoft YaHei", 9)).pack(side='left', padx=(8, 0))
+        int_ef = tk.Frame(r8, bg=THEME['border_light'], bd=1, relief='flat')
+        int_ef.pack(side='left', padx=(4, 10))
         self.proactive_int_var = tk.IntVar(value=self.proactive_interval)
-        int_entry = tk.Entry(row_pc, textvariable=self.proactive_int_var,
-                             bg='#2a2a3a', fg='white', bd=0,
-                             font=("Microsoft YaHei", 10),
-                             width=5, justify='center',
-                             insertbackground='white')
-        int_entry.pack(side='left')
+        tk.Entry(int_ef, textvariable=self.proactive_int_var,
+                 bg=THEME['input_bg'], fg=THEME['text'], bd=0,
+                 font=("Microsoft YaHei", 10),
+                 width=4, justify='center',
+                 insertbackground=THEME['text']).pack(padx=2, pady=2)
 
         # 联网搜索
-        row_ws = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_ws.pack(fill='x', pady=3)
-        tk.Label(row_ws, text="联网搜索", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r9 = _make_row()
+        _row_label(r9, "联网搜索")
         self.search_var = tk.BooleanVar(value=self.web_search)
-        cb_ws = tk.Checkbutton(row_ws, variable=self.search_var,
-                               bg='#1a1a2e', fg='white', selectcolor='#2a2a4a',
+        cb_ws = tk.Checkbutton(r9, variable=self.search_var,
+                               bg=THEME['surface'], fg=THEME['text'],
+                               selectcolor=THEME['bg'],
+                               activebackground=THEME['surface'],
                                command=self._on_search_toggle)
-        cb_ws.pack(side='left')
-        tk.Label(row_ws, text="（对话时自动搜索参考）", fg='#666', bg='#1a1a2e',
+        cb_ws.pack(side='left', padx=(4, 0))
+        tk.Label(r9, text="（对话时自动搜索参考）", fg=THEME['text_muted'], bg=THEME['surface'],
                  font=("Microsoft YaHei", 9)).pack(side='left', padx=(6, 0))
 
-        # --- API settings ---
-        sep = tk.Frame(inner_frame, height=1, bg='#2a2a4a')
-        sep.pack(fill='x', pady=6)
-
-        sec2 = tk.Label(inner_frame, text="AI 对话", fg='#8888ff', bg='#1a1a2e',
-                        font=("Microsoft YaHei", 9, "bold"), anchor='w')
-        sec2.pack(fill='x', pady=(0, 2))
+        # ─── AI 对话 ───
+        _section_header("AI 对话")
 
         # Provider
-        row_p = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_p.pack(fill='x', pady=3)
-        tk.Label(row_p, text="提供方", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r10 = _make_row()
+        _row_label(r10, "提供方")
         self.api_provider_var = tk.StringVar(value=self.api_provider)
-        provider_menu = ttk.Combobox(row_p, textvariable=self.api_provider_var,
+        provider_menu = ttk.Combobox(r10, textvariable=self.api_provider_var,
                                      values=["openai", "claude", "deepseek", "自定义"],
                                      state='readonly', width=12)
-        provider_menu.pack(side='left')
+        provider_menu.pack(side='left', padx=(4, 4))
         provider_menu.bind('<<ComboboxSelected>>', self._on_provider_change)
 
         # API Key
-        row_k = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_k.pack(fill='x', pady=3)
-        tk.Label(row_k, text="API Key", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r11 = _make_row()
+        _row_label(r11, "API Key")
         self.api_key_var = tk.StringVar(value=self.api_key)
-        self.api_key_entry = tk.Entry(row_k, textvariable=self.api_key_var,
-                                       bg='#2a2a3a', fg='white', bd=0,
+        key_ef2 = tk.Frame(r11, bg=THEME['border_light'], bd=1, relief='flat')
+        key_ef2.pack(side='left', fill='x', expand=True, padx=(4, 0))
+        self.api_key_entry = tk.Entry(key_ef2, textvariable=self.api_key_var,
+                                       bg=THEME['input_bg'], fg=THEME['text'], bd=0,
                                        font=("Microsoft YaHei", 10), width=20,
-                                       show='*', insertbackground='white')
-        self.api_key_entry.pack(side='left', fill='x', expand=True, padx=(0, 4))
-        self.key_show_btn = tk.Label(row_k, text="👁", fg='#888', bg='#1a1a2e',
-                                      cursor="hand2", font=("Microsoft YaHei", 11))
-        self.key_show_btn.pack(side='right')
+                                       show='*', insertbackground=THEME['text'])
+        self.api_key_entry.pack(fill='x', padx=2, pady=2)
+        # 显隐按钮放 API Key 这行右侧
+        self.key_show_btn = tk.Label(r11, text="👁", fg=THEME['text_muted'], bg=THEME['surface'],
+                                      cursor="hand2", font=("Microsoft YaHei", 12))
+        self.key_show_btn.pack(side='right', padx=(0, 10))
         self._key_hidden = True
         self.key_show_btn.bind('<ButtonPress-1>', lambda e: self._toggle_key_show())
         self.key_show_btn.bind('<ButtonRelease-1>', lambda e: self._toggle_key_show())
 
         # Model
-        row_m = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_m.pack(fill='x', pady=3)
-        tk.Label(row_m, text="模型", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r12 = _make_row()
+        _row_label(r12, "模型")
         self.api_model_var = tk.StringVar(value=self.api_model)
-        self.api_model_entry = tk.Entry(row_m, textvariable=self.api_model_var,
-                                         bg='#2a2a3a', fg='white', bd=0,
-                                         font=("Microsoft YaHei", 10),
-                                         insertbackground='white')
-        self.api_model_entry.pack(side='left', fill='x', expand=True, padx=(0, 4))
+        _styled_entry(r12, self.api_model_var)
 
         # Base URL
-        row_b = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_b.pack(fill='x', pady=3)
-        tk.Label(row_b, text="接口地址", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 9), width=8, anchor='w').pack(side='left')
+        r13 = _make_row()
+        _row_label(r13, "接口地址", width=7)
         self.api_base_var = tk.StringVar(value=self.api_base)
-        tk.Entry(row_b, textvariable=self.api_base_var,
-                 bg='#2a2a3a', fg='white', bd=0,
-                 font=("Microsoft YaHei", 9),
-                 insertbackground='white').pack(side='left', fill='x', expand=True, padx=(0, 4))
+        _styled_entry(r13, self.api_base_var, font=("Microsoft YaHei", 9))
 
         # 系统提示
-        row_sp = tk.Frame(inner_frame, bg='#1a1a2e')
-        row_sp.pack(fill='x', pady=3)
-        tk.Label(row_sp, text="人格设定", fg='#ccc', bg='#1a1a2e',
-                 font=("Microsoft YaHei", 10), width=8, anchor='w').pack(side='left')
+        r14 = _make_row()
+        _row_label(r14, "人格设定")
         self.api_sp_var = tk.StringVar(value=self.api_system_prompt)
-        sp_entry = tk.Entry(row_sp, textvariable=self.api_sp_var,
-                            bg='#2a2a3a', fg='white', bd=0,
-                            font=("Microsoft YaHei", 9),
-                            insertbackground='white')
-        sp_entry.pack(side='left', fill='x', expand=True, padx=(0, 4))
+        _styled_entry(r14, self.api_sp_var, font=("Microsoft YaHei", 9))
 
         # 保存按钮
+        btn_outer = tk.Frame(inner_frame, bg=THEME['bg'])
+        btn_outer.pack(pady=(12, 4))
         save_btn = tk.Label(
-            inner_frame, text="💾 保存 API 设置",
-            fg='white', bg='#3a3a6a', cursor="hand2",
-            font=("Microsoft YaHei", 10), padx=12, pady=4,
+            btn_outer, text="💾  保存 API 设置",
+            fg=THEME['text'], bg=THEME['accent_dark'], cursor="hand2",
+            font=("Microsoft YaHei", 10), padx=16, pady=6,
         )
-        save_btn.pack(pady=(8, 4))
-        save_btn.bind('<Enter>', lambda e: save_btn.configure(bg='#4a4a8a'))
-        save_btn.bind('<Leave>', lambda e: save_btn.configure(bg='#3a3a6a'))
+        save_btn.pack()
+        save_btn.bind('<Enter>', lambda e: save_btn.configure(bg=THEME['accent']))
+        save_btn.bind('<Leave>', lambda e: save_btn.configure(bg=THEME['accent_dark']))
         save_btn.bind('<Button-1>', lambda e: self._save_api_settings())
 
         # 状态标签
-        self.api_status_label = tk.Label(inner_frame, text="", fg='#4CAF50',
-                                          bg='#1a1a2e',
+        self.api_status_label = tk.Label(inner_frame, text="", fg=THEME['success'],
+                                          bg=THEME['bg'],
                                           font=("Microsoft YaHei", 9))
         self.api_status_label.pack()
 
         # 关闭按钮
         close_btn = tk.Label(
-            inner_frame, text="✕ 关闭",
-            fg='#aaa', bg='#1a1a2e', cursor="hand2",
+            inner_frame, text="✕  关闭",
+            fg=THEME['text_muted'], bg=THEME['bg'], cursor="hand2",
             font=("Microsoft YaHei", 10),
         )
-        close_btn.pack(pady=(4, 8))
+        close_btn.pack(pady=(4, 10))
         close_btn.bind('<Button-1>', lambda e: self.toggle_settings())
 
         # 绑定 ESC 关闭
@@ -726,11 +763,15 @@ class DesktopPet:
         self.speech_win = tk.Toplevel(self.root)
         self.speech_win.overrideredirect(True)
         self.speech_win.attributes('-topmost', True)
-        self.speech_win.configure(bg='#1a1a2e')
+        self.speech_win.configure(bg=THEME['bg'])
 
-        # 内容标签
+        # 气泡主体
+        border_frame = tk.Frame(self.speech_win, bg=THEME['border'], bd=0)
+        border_frame.pack(padx=2, pady=(2, 0))
+        bubble_body = tk.Frame(border_frame, bg=self.bubble_color, bd=0)
+        bubble_body.pack(padx=1, pady=1)
         label = tk.Label(
-            self.speech_win, text=text,
+            bubble_body, text=text,
             fg='white', bg=self.bubble_color,
             font=("Microsoft YaHei", 10),
             wraplength=220,
@@ -738,11 +779,11 @@ class DesktopPet:
         )
         label.pack()
 
-        # 小三角尾巴（用字符模拟）
+        # 小三角尾巴
         tail = tk.Label(
             self.speech_win, text="▼",
-            fg=self.bubble_color, bg='#1a1a2e',
-            font=("Microsoft YaHei", 8),
+            fg=self.bubble_color, bg=THEME['bg'],
+            font=("Microsoft YaHei", 10),
         )
         tail.pack(pady=(0, 0))
 
@@ -989,9 +1030,6 @@ class DesktopPet:
         # 鼠标悬停说话
         self.canvas.bind('<Enter>', lambda e: self.random_speak())
 
-        # 全局鼠标移动（用于跟随）
-        self.root.bind('<Motion>', self._on_mouse_move, add='+')
-
         # 键盘快捷键
         self.root.bind('<Left>', lambda e: self.prev_anim())
         self.root.bind('<Right>', lambda e: self.next_anim())
@@ -1021,10 +1059,6 @@ class DesktopPet:
 
     def _on_drag_end(self, e):
         self.is_dragging = False
-
-    def _on_mouse_move(self, e):
-        self._mouse_x = e.x_root
-        self._mouse_y = e.y_root
 
     def _show_menu(self, e):
         """显示右键菜单"""
@@ -1258,8 +1292,8 @@ class DesktopPet:
         self.chat_win = tk.Toplevel(self.root)
         self.chat_win.overrideredirect(True)
         self.chat_win.attributes('-topmost', True)
-        self.chat_win.configure(bg='#1a1a2e')
-        cw, ch = 280, 120
+        self.chat_win.configure(bg=THEME['border'])
+        cw, ch = 280, 135
         px = self.root.winfo_x() + WINDOW_SIZE + 10
         py = self.root.winfo_y()
         sw = self.root.winfo_screenwidth()
@@ -1267,37 +1301,50 @@ class DesktopPet:
             px = max(0, self.root.winfo_x() - cw - 10)
         self.chat_win.geometry(f"{cw}x{ch}+{px}+{py}")
 
-        # 标题栏
-        tb = tk.Frame(self.chat_win, bg='#2a2a4a')
+        # 内层内容容器（边框效果）
+        chat_inner = tk.Frame(self.chat_win, bg=THEME['bg'])
+        chat_inner.pack(fill='both', expand=True, padx=1, pady=1)
+
+        # 标题栏（accent 色底部边框）
+        tb = tk.Frame(chat_inner, bg=THEME['surface'])
         tb.pack(fill='x')
-        tk.Label(tb, text="💬 对我说...", fg='#aaa', bg='#2a2a4a',
-                 font=("Microsoft YaHei", 10), padx=10).pack(side='left')
-        cx_btn = tk.Label(tb, text="✕", fg='#888', bg='#2a2a4a', cursor="hand2",
-                          font=("Microsoft YaHei", 12), padx=10)
+        tk.Label(tb, text="💬  对我说...", fg=THEME['text_sec'], bg=THEME['surface'],
+                 font=("Microsoft YaHei", 10), padx=12, pady=6).pack(side='left')
+        cx_btn = tk.Label(tb, text="✕", fg=THEME['text_muted'], bg=THEME['surface'],
+                          cursor="hand2",
+                          font=("Microsoft YaHei", 13), padx=12, pady=6)
         cx_btn.pack(side='right')
+        cx_btn.bind('<Enter>', lambda e: cx_btn.configure(fg=THEME['text']))
+        cx_btn.bind('<Leave>', lambda e: cx_btn.configure(fg=THEME['text_muted']))
         cx_btn.bind('<Button-1>', lambda e: self._close_chat())
+        # 标题栏底线
+        tk.Frame(chat_inner, height=2, bg=THEME['accent']).pack(fill='x')
 
         # 输入区
-        i_f = tk.Frame(self.chat_win, bg='#1a1a2e')
-        i_f.pack(fill='both', expand=True, padx=10, pady=(8, 4))
-        self.chat_entry = tk.Text(i_f, height=2, bg='#2a2a3a', fg='white',
+        i_f = tk.Frame(chat_inner, bg=THEME['bg'])
+        i_f.pack(fill='both', expand=True, padx=8, pady=(6, 2))
+        # 带边框的输入框
+        input_outer = tk.Frame(i_f, bg=THEME['border_light'], bd=1, relief='flat')
+        input_outer.pack(fill='both', expand=True)
+        self.chat_entry = tk.Text(input_outer, height=2, bg=THEME['input_bg'], fg=THEME['text'],
                                    font=("Microsoft YaHei", 11), bd=0,
-                                   insertbackground='white', wrap='word')
+                                   insertbackground=THEME['text'], wrap='word',
+                                   padx=6, pady=4)
         self.chat_entry.pack(fill='both', expand=True)
         self.chat_entry.focus_set()
 
         # 按钮行
-        b_f = tk.Frame(self.chat_win, bg='#1a1a2e')
-        b_f.pack(fill='x', padx=10, pady=(0, 8))
-        self.thinking_label = tk.Label(b_f, text="", fg='#888', bg='#1a1a2e',
+        b_f = tk.Frame(chat_inner, bg=THEME['bg'])
+        b_f.pack(fill='x', padx=8, pady=(2, 8))
+        self.thinking_label = tk.Label(b_f, text="", fg=THEME['text_muted'], bg=THEME['bg'],
                                        font=("Microsoft YaHei", 9))
         self.thinking_label.pack(side='left')
-        self.send_btn = tk.Label(b_f, text="发送 (Enter)", fg='white',
-                                  bg='#3a3a6a', cursor="hand2",
-                                  font=("Microsoft YaHei", 10), padx=12, pady=3)
+        self.send_btn = tk.Label(b_f, text="发送 (Enter)", fg=THEME['text'],
+                                  bg=THEME['accent_dark'], cursor="hand2",
+                                  font=("Microsoft YaHei", 10), padx=14, pady=4)
         self.send_btn.pack(side='right')
-        self.send_btn.bind('<Enter>', lambda e: self.send_btn.configure(bg='#4a4a8a'))
-        self.send_btn.bind('<Leave>', lambda e: self.send_btn.configure(bg='#3a3a6a'))
+        self.send_btn.bind('<Enter>', lambda e: self.send_btn.configure(bg=THEME['accent']))
+        self.send_btn.bind('<Leave>', lambda e: self.send_btn.configure(bg=THEME['accent_dark']))
         self.send_btn.bind('<Button-1>', lambda e: self._send_message())
 
         # 快捷键
@@ -1336,6 +1383,54 @@ class DesktopPet:
         if not (cx <= e.x_root <= cx + cw and cy <= e.y_root <= cy + ch):
             self._close_chat()
 
+    # ─── 统一 API 请求 ────────────────────────────
+
+    def _api_request(self, messages, system_prompt='', max_tokens=300, temperature=0.8, timeout=30):
+        """统一 API 请求，支持 OpenAI / Claude / 兼容接口"""
+        if self.api_provider == 'claude':
+            url = self.api_base.rstrip('/') + '/v1/messages'
+            headers = {
+                "Content-Type": "application/json",
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+            }
+            payload = {
+                "model": self.api_model,
+                "system": system_prompt or '',
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            extract = lambda b: b['content'][0]['text']
+        else:
+            url = self.api_base.rstrip('/') + '/chat/completions'
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            }
+            full = [{"role": "system", "content": system_prompt}] if system_prompt else []
+            full.extend(messages)
+            payload = {
+                "model": self.api_model,
+                "messages": full,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            extract = lambda b: b['choices'][0]['message']['content']
+
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=timeout) as resp:
+            body = json.loads(resp.read().decode('utf-8'))
+        return extract(body).strip()
+
+    def _time_context(self):
+        """返回当前日期时间字符串"""
+        import datetime
+        now = datetime.datetime.now()
+        tz = time.tzname[0] if time.daylight else time.tzname[0]
+        return f"当前时间: {now.strftime('%Y-%m-%d %A %H:%M')} ({tz})"
+
     # ─── API 对话 ────────────────────────────────────
 
     def _send_message(self):
@@ -1358,72 +1453,17 @@ class DesktopPet:
         t.start()
 
     def _call_api(self, text):
+        """带历史记录的手动对话"""
         try:
-            if self.api_provider == 'claude':
-                result = self._call_claude(text)
-            else:
-                result = self._call_openai(text)
-            self.root.after(0, lambda: self._handle_api_response(result))
+            system = self.api_system_prompt + '\n\n' + self._time_context()
+            messages = [{"role": r, "content": c} for r, c in self.chat_history[-6:]]
+            messages.append({"role": "user", "content": text})
+            reply = self._api_request(messages, system, max_tokens=300, temperature=0.8)
+            self.chat_history.append(("user", text))
+            self.chat_history.append(("assistant", reply))
+            self.root.after(0, lambda: self._handle_api_response(reply))
         except Exception as e:
             self.root.after(0, lambda: self._handle_api_error(str(e)))
-
-    def _time_context(self):
-        """返回当前日期时间字符串"""
-        import datetime
-        now = datetime.datetime.now()
-        tz = time.tzname[0] if time.daylight else time.tzname[0]
-        return f"当前时间: {now.strftime('%Y-%m-%d %A %H:%M')} ({tz})"
-
-    def _call_openai(self, text):
-        messages = [{"role": "system", "content": self.api_system_prompt + '\n\n' + self._time_context()}]
-        for role, content in self.chat_history[-6:]:
-            messages.append({"role": role, "content": content})
-        messages.append({"role": "user", "content": text})
-
-        url = f"{self.api_base}/chat/completions"
-        data = json.dumps({
-            "model": self.api_model, "messages": messages,
-            "max_tokens": 300, "temperature": 0.8,
-        }).encode('utf-8')
-
-        req = urllib.request.Request(url, data=data, headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}",
-        }, method='POST')
-
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=30) as resp:
-            body = json.loads(resp.read().decode('utf-8'))
-            reply = body['choices'][0]['message']['content'].strip()
-
-        self.chat_history.append(("user", text))
-        self.chat_history.append(("assistant", reply))
-        return reply
-
-    def _call_claude(self, text):
-        messages = []
-        for role, content in self.chat_history[-6:]:
-            messages.append({"role": role, "content": content})
-        messages.append({"role": "user", "content": text})
-
-        system = self.api_system_prompt + '\n\n' + self._time_context()
-        url = f"{self.api_base}/v1/messages"
-        data = json.dumps({
-            "model": self.api_model, "system": system,
-            "messages": messages, "max_tokens": 300, "temperature": 0.8,
-        }).encode('utf-8')
-
-        req = urllib.request.Request(url, data=data, headers={
-            "Content-Type": "application/json", "x-api-key": self.api_key,
-            "anthropic-version": "2023-06-01",
-        }, method='POST')
-
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=30) as resp:
-            body = json.loads(resp.read().decode('utf-8'))
-            reply = body['content'][0]['text'].strip()
-
-        self.chat_history.append(("user", text))
-        self.chat_history.append(("assistant", reply))
-        return reply
 
     def _handle_api_response(self, reply):
         self._thinking = False
@@ -1461,19 +1501,20 @@ class DesktopPet:
             self._schedule_next_proactive()
             return
         self._thinking = True
-        # 超时保护：如果 20 秒后还在 thinking 则自动复位
         self._proactive_timeout = self.root.after(20000, self._unstick_thinking)
         prompt = "请根据你的人格设定，说一句简短可爱的话（不超过30字）"
         t = threading.Thread(target=self._call_proactive_api, args=(prompt,), daemon=True)
         t.start()
 
     def _call_proactive_api(self, text):
+        """主动说话（单轮，无历史）"""
         try:
-            if self.api_provider == 'claude':
-                result = self._call_claude_simple(text)
-            else:
-                result = self._call_openai_simple(text)
-            self.root.after(0, lambda: self._handle_proactive_response(result))
+            system = self.api_system_prompt + '\n\n' + self._time_context()
+            reply = self._api_request(
+                [{"role": "user", "content": text}],
+                system, max_tokens=80, temperature=0.9, timeout=15,
+            )
+            self.root.after(0, lambda: self._handle_proactive_response(reply))
         except Exception as e:
             self._thinking = False
             if hasattr(self, '_proactive_timeout'):
@@ -1481,54 +1522,6 @@ class DesktopPet:
             err = str(e)[:60]
             self.root.after(0, lambda: self.say(f"主动说话失败: {err}"))
             self._schedule_next_proactive()
-
-    def _call_openai_simple(self, text):
-        url = self.api_base.rstrip('/') + '/chat/completions'
-        sys_c = self.api_system_prompt + '\n\n' + self._time_context()
-        data = json.dumps({"model": self.api_model,
-            "messages": [{"role":"system","content":sys_c},{"role":"user","content":text}],
-            "max_tokens":80,"temperature":0.9}).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={
-            "Content-Type":"application/json","Authorization":f"Bearer {self.api_key}"}, method='POST')
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=15) as resp:
-            return json.loads(resp.read().decode('utf-8'))['choices'][0]['message']['content'].strip()
-
-    def _call_claude_simple(self, text):
-        url = self.api_base.rstrip('/') + '/v1/messages'
-        sys_c = self.api_system_prompt + '\n\n' + self._time_context()
-        data = json.dumps({"model":self.api_model,"system":sys_c,
-            "messages":[{"role":"user","content":text}],"max_tokens":80,"temperature":0.9}).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={
-            "Content-Type":"application/json","x-api-key":self.api_key,
-            "anthropic-version":"2023-06-01"}, method='POST')
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=15) as resp:
-            return json.loads(resp.read().decode('utf-8'))['content'][0]['text'].strip()
-
-    def _call_openai_simple_with_search(self, text, search_context):
-        url = self.api_base.rstrip('/') + '/chat/completions'
-        sys_content = self.api_system_prompt + '\n\n' + self._time_context()
-        if search_context:
-            sys_content += '\n\n当前网络信息（供参考）:\n' + search_context
-        data = json.dumps({"model": self.api_model,
-            "messages": [{"role":"system","content":sys_content},{"role":"user","content":text}],
-            "max_tokens":80,"temperature":0.9}).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={
-            "Content-Type":"application/json","Authorization":f"Bearer {self.api_key}"}, method='POST')
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=15) as resp:
-            return json.loads(resp.read().decode('utf-8'))['choices'][0]['message']['content'].strip()
-
-    def _call_claude_simple_with_search(self, text, search_context):
-        url = self.api_base.rstrip('/') + '/v1/messages'
-        system = self.api_system_prompt + '\n\n' + self._time_context()
-        if search_context:
-            system += '\n\n当前网络信息（供参考）:\n' + search_context
-        data = json.dumps({"model":self.api_model,"system":system,
-            "messages":[{"role":"user","content":text}],"max_tokens":80,"temperature":0.9}).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={
-            "Content-Type":"application/json","x-api-key":self.api_key,
-            "anthropic-version":"2023-06-01"}, method='POST')
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=15) as resp:
-            return json.loads(resp.read().decode('utf-8'))['content'][0]['text'].strip()
 
     def _unstick_thinking(self):
         """超时复位 thinking 标志"""
@@ -1543,7 +1536,7 @@ class DesktopPet:
         if not reply or not reply.strip():
             reply = "嘿嘿~"
         self.say(reply)
-        self.switch_gif(random.randint(0, len(GIF_NAMES)-1))
+        self.switch_gif(random.randint(0, len(GIF_NAMES) - 1))
         self._schedule_next_proactive()
 
     def _schedule_next_proactive(self):
@@ -1576,51 +1569,20 @@ class DesktopPet:
             return ''
 
     def _call_api_with_search(self, text):
-        search_context = ''
-        if self.web_search:
-            search_context = self._search_web(text)
+        """带联网搜索的手动对话"""
+        search_context = self._search_web(text) if self.web_search else ''
         try:
-            if self.api_provider == 'claude':
-                result = self._call_claude_with_search(text, search_context)
-            else:
-                result = self._call_openai_with_search(text, search_context)
-            self.root.after(0, lambda: self._handle_api_response(result))
+            system = self.api_system_prompt + '\n\n' + self._time_context()
+            if search_context:
+                system += '\n\n当前网络信息（供参考）:\n' + search_context
+            messages = [{"role": r, "content": c} for r, c in self.chat_history[-6:]]
+            messages.append({"role": "user", "content": text})
+            reply = self._api_request(messages, system, max_tokens=300, temperature=0.8)
+            self.chat_history.append(("user", text))
+            self.chat_history.append(("assistant", reply))
+            self.root.after(0, lambda: self._handle_api_response(reply))
         except Exception as e:
             self.root.after(0, lambda: self._handle_api_error(str(e)))
-
-    def _call_openai_with_search(self, text, search_context):
-        messages = [{"role":"system","content":self.api_system_prompt + '\n\n' + self._time_context()}]
-        if search_context:
-            messages[0]["content"] += '\n\nCurrent web search results (for reference):\n' + search_context
-        for role, content in self.chat_history[-6:]:
-            messages.append({"role":role,"content":content})
-        messages.append({"role":"user","content":text})
-        url = self.api_base.rstrip('/') + '/chat/completions'
-        data = json.dumps({"model":self.api_model,"messages":messages,"max_tokens":300,"temperature":0.8}).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={
-            "Content-Type":"application/json","Authorization":f"Bearer {self.api_key}"}, method='POST')
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=30) as resp:
-            reply = json.loads(resp.read().decode('utf-8'))['choices'][0]['message']['content'].strip()
-        self.chat_history.append(("user",text)); self.chat_history.append(("assistant",reply))
-        return reply
-
-    def _call_claude_with_search(self, text, search_context):
-        system = self.api_system_prompt + '\n\n' + self._time_context()
-        if search_context:
-            system += '\n\nCurrent web search results (for reference):\n' + search_context
-        messages = []
-        for role, content in self.chat_history[-6:]:
-            messages.append({"role":role,"content":content})
-        messages.append({"role":"user","content":text})
-        url = self.api_base.rstrip('/') + '/v1/messages'
-        data = json.dumps({"model":self.api_model,"system":system,"messages":messages,"max_tokens":300,"temperature":0.8}).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={
-            "Content-Type":"application/json","x-api-key":self.api_key,
-            "anthropic-version":"2023-06-01"}, method='POST')
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=30) as resp:
-            reply = json.loads(resp.read().decode('utf-8'))['content'][0]['text'].strip()
-        self.chat_history.append(("user",text)); self.chat_history.append(("assistant",reply))
-        return reply
 
     # ─── 配置持久化 ──────────────────────────────
 
