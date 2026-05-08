@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>桌宠 - Rainbow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  body {
+    overflow: hidden;
+    background: transparent;
+    font-family: 'Microsoft YaHei', sans-serif;
+  }
+
+  /* 桌宠容器 */
+  #pet-container {
+    position: fixed;
+    z-index: 999999;
+    cursor: grab;
+    touch-action: none;
+  }
+  #pet-container.dragging { cursor: grabbing; }
+
+  /* 角色主体 */
+  #pet {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #pet img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    pointer-events: none;
+  }
+
+  /* 状态标签 */
+  #state-label {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    white-space: nowrap;
+    pointer-events: none;
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+
+  /* 心情指示器 */
+  #mood-bar {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #mood-fill {
+    height: 100%;
+    width: 70%;
+    border-radius: 2px;
+    transition: width 0.6s ease, background 0.6s ease;
+  }
+
+  /* 对话气泡 */
+  #speech {
+    position: absolute;
+    top: -45px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  #speech.show { opacity: 1; }
+  #speech::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid rgba(0,0,0,0.75);
+  }
+
+  /* 右键菜单 */
+  #context-menu {
+    position: fixed;
+    background: rgba(20,20,30,0.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 6px 0;
+    min-width: 150px;
+    z-index: 1000000;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  #context-menu.show {
+    opacity: 1;
+    pointer-events: all;
+    transform: scale(1);
+  }
+  #context-menu .menu-item {
+    padding: 8px 16px;
+    color: rgba(255,255,255,0.85);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s;
+  }
+  #context-menu .menu-item:hover { background: rgba(255,255,255,0.1); }
+  #context-menu .menu-item .icon { font-size: 14px; }
+  #context-menu .divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 4px 8px;
+  }
+
+  /* 操作按钮 */
+  #action-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 999998;
+  }
+  #action-bar button {
+    background: rgba(20,20,30,0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+  #action-bar button:hover {
+    background: rgba(255,255,255,0.15);
+    transform: scale(1.05);
+  }
+
+  /* 拖拽时的发光效果 */
+  #pet-container::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  #pet-container:hover::before { opacity: 1; }
+
+  /* 移动动画轨迹 */
+  .trail {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 999998;
+  }
+
+  /* 设置面板 */
+  #settings-panel {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20,20,30,0.95);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 24px;
+    min-width: 320px;
+    z-index: 1000001;
+    color: #fff;
+    box-shadow: 0 16px 64px rgba(0,0,0,0.5);
+  }
+  #settings-panel.show { display: block; }
+  #settings-panel h3 {
+    font-size: 16px;
+    margin-bottom: 16px;
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+  #settings-panel label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  #settings-panel label:last-child { border-bottom: none; }
+  #settings-panel input[type="range"] {
+    width: 120px;
+    accent-color: #8888ff;
+  }
+  #settings-panel input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #8888ff;
+  }
+  #settings-panel select {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .settings-close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-size: 20px;
+    cursor: pointer;
+  }
+  .settings-close:hover { color: #fff; }
+
+  .settings-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 1000000;
+  }
+  .settings-overlay.show { display: block; }
+
+  /* 动画切换指示 */
+  #anim-indicator {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 18px;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+  }
+  #anim-indicator.pop {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.2);
+  }
+</style>
+</head>
+<body>
+
+<!-- 桌宠主体 -->
+<div id="pet-container">
+  <div id="pet">
+    <div id="anim-indicator">✨</div>
+    <div id="speech">你好呀~</div>
+    <img id="pet-img" src="" alt="桌宠">
+    <div id="state-label">开心</div>
+  </div>
+  <div id="mood-bar"><div id="mood-fill"></div></div>
+</div>
+
+<!-- 右键菜单 -->
+<div id="context-menu">
+  <div class="menu-item" data-action="walk"><span class="icon">🚶</span> 散步模式</div>
+  <div class="menu-item" data-action="follow"><span class="icon">👆</span> 跟随鼠标</div>
+  <div class="menu-item" data-action="dance"><span class="icon">💃</span> 跳舞</div>
+  <div class="divider"></div>
+  <div class="menu-item" data-action="next"><span class="icon">⏭️</span> 切换动作</div>
+  <div class="menu-item" data-action="random"><span class="icon">🎲</span> 随机表情</div>
+  <div class="divider"></div>
+  <div class="menu-item" data-action="settings"><span class="icon">⚙️</span> 设置</div>
+  <div class="divider"></div>
+  <div class="menu-item" data-action="quit"><span class="icon">👋</span> 退出</div>
+</div>
+
+<!-- 设置面板 -->
+<div class="settings-overlay" id="settings-overlay"></div>
+<div id="settings-panel">
+  <button class="settings-close" id="settings-close">&times;</button>
+  <h3>⚙️ 桌宠设置</h3>
+  <label>
+    大小
+    <input type="range" id="pet-size" min="60" max="250" value="120">
+  </label>
+  <label>
+    移动速度
+    <input type="range" id="move-speed" min="1" max="10" value="3">
+  </label>
+  <label>
+    自动漫游
+    <input type="checkbox" id="auto-walk" checked>
+  </label>
+  <label>
+    显示轨迹
+    <input type="checkbox" id="show-trail">
+  </label>
+  <label>
+    透明背景
+    <input type="checkbox" id="transparent-bg" checked>
+  </label>
+  <label>
+    动作切换间隔
+    <select id="switch-interval">
+      <option value="3000">3 秒</option>
+      <option value="5000" selected>5 秒</option>
+      <option value="8000">8 秒</option>
+      <option value="15000">15 秒</option>
+    </select>
+  </label>
+</div>
+
+<!-- 底部操作栏 -->
+<div id="action-bar">
+  <button onclick="pet.say('你好呀~')">👋 打招呼</button>
+  <button onclick="pet.toggleWalk()">🚶 散步</button>
+  <button onclick="pet.nextAnim()">⏭️ 切换</button>
+  <button onclick="pet.randomAnim()">🎲 换心情</button>
+  <button onclick="pet.toggleSettings()">⚙️ 设置</button>
+</div>
+
+<script>
+// ============================================
+//  桌宠主程序
+// ============================================
+
+// 所有 GIF 文件列表（从 Rainbow.md 提取）
+const GIF_LIST = [
+  "9ff6d968-515e-42d3-b3e8-0fa54e561312.gif",
+  "1f3c78a7-319c-459a-81e9-5be86107a97f.gif",
+  "b84baff2-2633-4166-9714-b72379e3083a.gif",
+  "26da6319-8f17-49dd-b9b1-55a5d71fe8e0.gif",
+  "c710dac8-ad27-4576-b44e-894a027caa4b.gif",
+  "dedb12c9-382c-49d1-b66f-a93c12e1e156.gif",
+  "9b3a8d8a-d058-48be-834b-034dd5d2e973.gif",
+  "cd5e44f9-7ee3-444a-af04-c96ccb3c8883.gif",
+  "9f843a6a-b9f6-4b05-82b3-56b1e9081daa.gif",
+  "45944575-ffc6-4c73-ab6f-860be5ca651d.gif",
+  "0683881c-9c54-4f89-8889-466473131750.gif",
+  "a195e75c-7df4-49ae-b932-f4bafacc5aa0.gif",
+  "3a22e361-7db2-4b45-a6d5-ff4d90083fe4.gif",
+  "0677e6b6-9057-44b1-8c4b-daff5fc9838b.gif",
+  "3c4d0ed3-f4fc-42fa-bf9f-dbd5390528e9.gif",
+  "8e93cedd-fdae-4a3a-8a55-08e0be2ecd99.gif",
+  "dd12ff56-c349-4714-98ae-5f01e45870dd.gif",
+  "0a3579d1-9a99-4161-a618-709a2029de8c.gif",
+  "09a2fd86-af4a-4ee9-a126-ec9f0bb223d8.gif",
+  "0290e42b-e1d6-4f98-8b9a-43bc77e50310.gif",
+  "929539e9-2f88-40be-82f9-a98b54d3e641.gif",
+  "4289eeb3-ff65-4a4f-a26b-bc8044f6f7c4.gif",
+  "616b7566-b567-4f64-825a-99842114eceb.gif",
+  "d5c20993-c4c5-4bc3-bedc-9668fecd049c.gif"
+];
+
+// 状态标签映射（根据不同 GIF 显示对应的情绪文字）
+const STATE_LABELS = [
+  "开心", "微笑", "眨眼", "期待",
+  "发呆", "惊喜", "得意", "卖萌",
+  "害羞", "思考", "打哈欠", "犯困",
+  "兴奋", "跳舞", "唱歌", "转圈",
+  "跑步", "走路", "跳跃", "蹲下",
+  "招手", "点赞", "比心", "飞吻"
+];
+
+// 对应颜色
+const STATE_COLORS = [
+  "#FFD700", "#FFB6C1", "#87CEEB", "#98FB98",
+  "#DDA0DD", "#FFA500", "#FF69B4", "#FFE4B5",
+  "#FFC0CB", "#B0C4DE", "#F0E68C", "#B0E0E6",
+  "#FF6347", "#7B68EE", "#00CED1", "#FF1493",
+  "#32CD32", "#FFD700", "#FF4500", "#8A2BE2",
+  "#00BFFF", "#FFD700", "#FF69B4", "#FFB6C1"
+];
+
+const SPEECHES = [
+  "嘿嘿~", "今天好开心！", "有点困了呢…",
+  "你好呀！", "陪我玩~", "嗯…在想事情",
+  "哇！", "好无聊啊…", "喜欢！",
+  "嘿嘿嘿", "天气真好~", "想吃点东西…",
+  "来追我呀！", "好棒！", "唔…",
+  "你好！", "加油！", "休息一下吧",
+  "嘿嘿~", "好神奇！", "嗯嗯！"
+];
+
+class DesktopPet {
+  constructor() {
+    this.container = document.getElementById('pet-container');
+    this.img = document.getElementById('pet-img');
+    this.label = document.getElementById('state-label');
+    this.speech = document.getElementById('speech');
+    this.moodFill = document.getElementById('mood-fill');
+    this.indicator = document.getElementById('anim-indicator');
+
+    this.currentIndex = 0;
+    this.animInterval = null;
+    this.walkInterval = null;
+    this.speechTimeout = null;
+    this.moodTimeout = null;
+    this.trailInterval = null;
+
+    this.isDragging = false;
+    this.isWalking = false;
+    this.isFollowing = false;
+    this.showTrail = false;
+    this.autoWalk = true;
+
+    this.dragOffsetX = 0;
+    this.dragOffsetY = 0;
+    this.size = 120;
+    this.moveSpeed = 3;
+    this.switchInterval = 5000;
+    this.targetX = null;
+    this.targetY = null;
+    this.walkDirection = 1;
+
+    this.init();
+  }
+
+  init() {
+    this.loadGIFs();
+    this.startAutoSwitch();
+    this.startAutoWalk();
+    this.bindEvents();
+    this.centerPet();
+    this.say('嘿嘿~ 我来了！');
+    this.updateMood(80);
+  }
+
+  loadGIFs() {
+    // 预加载所有 GIF
+    GIF_LIST.forEach(name => {
+      const img = new Image();
+      img.src = name;
+    });
+    // 显示第一个
+    this.img.src = GIF_LIST[0];
+    this.updateLabel(0);
+  }
+
+  // ---------- 核心显示 ----------
+
+  showGIF(index) {
+    this.currentIndex = index % GIF_LIST.length;
+    this.img.src = GIF_LIST[this.currentIndex];
+    this.updateLabel(this.currentIndex);
+
+    // 弹出动画指示器
+    this.indicator.className = 'pop';
+    setTimeout(() => { this.indicator.className = ''; }, 500);
+  }
+
+  updateLabel(index) {
+    this.label.textContent = STATE_LABELS[index % STATE_LABELS.length];
+    this.moodFill.style.background = STATE_COLORS[index % STATE_COLORS.length];
+  }
+
+  updateMood(value) {
+    this.moodFill.style.width = value + '%';
+    if (value > 60) this.moodFill.style.background = '#4CAF50';
+    else if (value > 30) this.moodFill.style.background = '#FFC107';
+    else this.moodFill.style.background = '#f44336';
+  }
+
+  // ---------- 对话气泡 ----------
+
+  say(text) {
+    this.speech.textContent = text;
+    this.speech.className = 'show';
+    if (this.speechTimeout) clearTimeout(this.speechTimeout);
+    this.speechTimeout = setTimeout(() => {
+      this.speech.className = '';
+    }, 2500);
+  }
+
+  randomSpeak() {
+    if (Math.random() > 0.15) return; // 15% 概率
+    const text = SPEECHES[Math.floor(Math.random() * SPEECHES.length)];
+    this.say(text);
+  }
+
+  // ---------- 动画切换 ----------
+
+  nextAnim() {
+    this.showGIF(this.currentIndex + 1);
+    this.randomSpeak();
+  }
+
+  prevAnim() {
+    this.showGIF(this.currentIndex - 1 + GIF_LIST.length);
+  }
+
+  randomAnim() {
+    const idx = Math.floor(Math.random() * GIF_LIST.length);
+    this.showGIF(idx);
+  }
+
+  startAutoSwitch() {
+    if (this.animInterval) clearInterval(this.animInterval);
+    this.animInterval = setInterval(() => {
+      this.nextAnim();
+    }, this.switchInterval);
+  }
+
+  setSwitchInterval(ms) {
+    this.switchInterval = ms;
+    this.startAutoSwitch();
+  }
+
+  // ---------- 拖拽 ----------
+
+  bindEvents() {
+    // 鼠标拖拽
+    this.container.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      this.startDrag(e.clientX, e.clientY);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!this.isDragging) return;
+      this.onDrag(e.clientX, e.clientY);
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (!this.isDragging) return;
+      this.endDrag();
+    });
+
+    // 触摸拖拽
+    this.container.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      this.startDrag(t.clientX, t.clientY);
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!this.isDragging) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      this.onDrag(t.clientX, t.clientY);
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+      if (!this.isDragging) return;
+      this.endDrag();
+    });
+
+    // 右键菜单
+    this.container.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      this.showContextMenu(e.clientX, e.clientY);
+    });
+
+    document.addEventListener('click', () => {
+      this.hideContextMenu();
+    });
+
+    // 双击切换
+    this.container.addEventListener('dblclick', () => {
+      this.nextAnim();
+      this.randomSpeak();
+    });
+
+    // 点击弹出随机对话
+    this.container.addEventListener('click', (e) => {
+      if (e.button !== 0) return;
+      if (this.isDragging) return;
+      this.randomSpeak();
+    });
+
+    // 设置面板
+    this.bindSettings();
+  }
+
+  startDrag(clientX, clientY) {
+    this.isDragging = true;
+    this.isWalking = false;
+    this.isFollowing = false;
+    this.container.classList.add('dragging');
+    const rect = this.container.getBoundingClientRect();
+    this.dragOffsetX = clientX - rect.left;
+    this.dragOffsetY = clientY - rect.top;
+  }
+
+  onDrag(clientX, clientY) {
+    const x = clientX - this.dragOffsetX;
+    const y = clientY - this.dragOffsetY;
+    this.container.style.left = x + 'px';
+    this.container.style.top = y + 'px';
+    this.container.style.transform = 'none';
+  }
+
+  endDrag() {
+    this.isDragging = false;
+    this.container.classList.remove('dragging');
+  }
+
+  centerPet() {
+    const x = (window.innerWidth - this.size) / 2;
+    const y = (window.innerHeight - this.size) / 2;
+    this.container.style.left = x + 'px';
+    this.container.style.top = y + 'px';
+  }
+
+  // ---------- 右键菜单 ----------
+
+  showContextMenu(x, y) {
+    const menu = document.getElementById('context-menu');
+    // 确保菜单不超出屏幕
+    const menuW = 170;
+    const menuH = 320;
+    const cx = Math.min(x, window.innerWidth - menuW);
+    const cy = Math.min(y, window.innerHeight - menuH);
+    menu.style.left = Math.max(0, cx) + 'px';
+    menu.style.top = Math.max(0, cy) + 'px';
+    menu.className = 'show';
+  }
+
+  hideContextMenu() {
+    document.getElementById('context-menu').className = '';
+  }
+
+  // ---------- 动作 ----------
+
+  toggleWalk() {
+    this.isWalking = !this.isWalking;
+    this.isFollowing = false;
+    if (this.isWalking) {
+      this.say('去散步啦~ 🚶');
+      this.targetX = Math.random() * (window.innerWidth - this.size);
+      this.targetY = Math.random() * (window.innerHeight - this.size);
+    } else {
+      this.say('不走了~');
+    }
+  }
+
+  toggleFollow() {
+    this.isFollowing = !this.isFollowing;
+    this.isWalking = false;
+    if (this.isFollowing) {
+      this.say('跟着你~ 👆');
+    }
+  }
+
+  // ---------- 自动漫游 ----------
+
+  startAutoWalk() {
+    this.walkInterval = setInterval(() => {
+      if (this.isDragging) return;
+
+      // 跟随鼠标模式
+      if (this.isFollowing && this.followX != null) {
+        const rect = this.container.getBoundingClientRect();
+        const dx = this.followX - (rect.left + this.size/2);
+        const dy = this.followY - (rect.top + this.size/2);
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist > 30) {
+          const speed = this.moveSpeed * 1.5;
+          const moveX = (dx / dist) * Math.min(speed, dist);
+          const moveY = (dy / dist) * Math.min(speed, dist);
+          this.container.style.left = (rect.left + moveX) + 'px';
+          this.container.style.top = (rect.top + moveY) + 'px';
+        }
+        return;
+      }
+
+      // 自动漫游
+      if (this.autoWalk && !this.isWalking && !this.isDragging && Math.random() > 0.97) {
+        const deltaX = (Math.random() - 0.5) * this.moveSpeed * 8;
+        const deltaY = (Math.random() - 0.5) * this.moveSpeed * 6;
+        const rect = this.container.getBoundingClientRect();
+        let newX = rect.left + deltaX;
+        let newY = rect.top + deltaY;
+        // 边界约束
+        newX = Math.max(0, Math.min(window.innerWidth - this.size - 10, newX));
+        newY = Math.max(0, Math.min(window.innerHeight - this.size - 10, newY));
+        this.container.style.left = newX + 'px';
+        this.container.style.top = newY + 'px';
+        this.randomSpeak();
+      }
+
+      // 散步模式
+      if (this.isWalking) {
+        const rect = this.container.getBoundingClientRect();
+        const dx = this.targetX - rect.left;
+        const dy = this.targetY - rect.top;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist < 5) {
+          // 到达目标，选新目标
+          this.targetX = Math.random() * (window.innerWidth - this.size);
+          this.targetY = Math.random() * (window.innerHeight - this.size);
+        } else {
+          const speed = this.moveSpeed * 2;
+          const moveX = (dx / dist) * Math.min(speed, dist);
+          const moveY = (dy / dist) * Math.min(speed, dist);
+          this.container.style.left = (rect.left + moveX) + 'px';
+          this.container.style.top = (rect.top + moveY) + 'px';
+        }
+      }
+
+      // 随机心情变化
+      if (Math.random() > 0.995) {
+        this.randomAnim();
+      }
+    }, 50);
+  }
+
+  // ---------- 设置 ----------
+
+  bindSettings() {
+    document.querySelectorAll('.menu-item[data-action]').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = item.dataset.action;
+        this.hideContextMenu();
+        switch (action) {
+          case 'walk': this.toggleWalk(); break;
+          case 'follow': this.toggleFollow(); break;
+          case 'dance': this.say('来跳舞吧！💃'); this.showGIF(13); break;
+          case 'next': this.nextAnim(); break;
+          case 'random': this.randomAnim(); break;
+          case 'settings': this.toggleSettings(); break;
+          case 'quit': this.quit(); break;
+        }
+      });
+    });
+
+    document.getElementById('pet-size').addEventListener('input', (e) => {
+      this.size = parseInt(e.target.value);
+      this.container.style.width = this.size + 'px';
+      document.getElementById('pet').style.width = this.size + 'px';
+      document.getElementById('pet').style.height = this.size + 'px';
+    });
+
+    document.getElementById('move-speed').addEventListener('input', (e) => {
+      this.moveSpeed = parseInt(e.target.value);
+    });
+
+    document.getElementById('auto-walk').addEventListener('change', (e) => {
+      this.autoWalk = e.target.checked;
+    });
+
+    document.getElementById('show-trail').addEventListener('change', (e) => {
+      this.showTrail = e.target.checked;
+    });
+
+    document.getElementById('switch-interval').addEventListener('change', (e) => {
+      this.setSwitchInterval(parseInt(e.target.value));
+    });
+
+    document.getElementById('settings-close').addEventListener('click', () => {
+      this.toggleSettings();
+    });
+
+    document.getElementById('settings-overlay').addEventListener('click', () => {
+      this.toggleSettings();
+    });
+
+    // 鼠标移动跟踪（用于跟随模式）
+    document.addEventListener('mousemove', (e) => {
+      this.followX = e.clientX;
+      this.followY = e.clientY;
+    });
+  }
+
+  toggleSettings() {
+    const panel = document.getElementById('settings-panel');
+    const overlay = document.getElementById('settings-overlay');
+    const show = !panel.classList.contains('show');
+    panel.className = show ? 'show' : '';
+    overlay.className = show ? 'show' : '';
+  }
+
+  quit() {
+    if (confirm('桌宠要走了，拜拜~ 👋')) {
+      this.say('拜拜~ 下次见！');
+      setTimeout(() => {
+        document.getElementById('pet-container').style.display = 'none';
+        document.getElementById('action-bar').style.display = 'none';
+      }, 1000);
+    }
+  }
+}
+
+// ============================================
+//  启动
+// ============================================
+const pet = new DesktopPet();
+
+// 窗口大小变化时保持边界
+window.addEventListener('resize', () => {
+  const rect = pet.container.getBoundingClientRect();
+  const maxX = window.innerWidth - pet.size - 10;
+  const maxY = window.innerHeight - pet.size - 10;
+  if (rect.left > maxX || rect.top > maxY) {
+    pet.container.style.left = Math.min(rect.left, maxX) + 'px';
+    pet.container.style.top = Math.min(rect.top, maxY) + 'px';
+  }
+});
+
+// 键盘快捷键
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  switch (e.key) {
+    case 'ArrowRight': pet.nextAnim(); break;
+    case 'ArrowLeft': pet.prevAnim(); break;
+    case ' ': pet.randomAnim(); e.preventDefault(); break;
+    case 'w': pet.toggleWalk(); break;
+    case 's': pet.toggleSettings(); break;
+  }
+});
+
+console.log('🐾 Rainbow 桌宠已启动！');
+console.log('📋 快捷键: ← → 切换, 空格随机, W 散步, S 设置');
+</script>
+</body>
+</html>
