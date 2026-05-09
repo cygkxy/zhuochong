@@ -61,25 +61,41 @@ PetWindow::~PetWindow() {
 bool PetWindow::Create() {
     const wchar_t CLASS_NAME[] = L"RainbowPetWindow";
 
-    WNDCLASS wc = {};
-    wc.lpfnWndProc = ::WindowProc;
-    wc.hInstance = m_hInst;
+    HINSTANCE hInst = m_hInst ? m_hInst : GetModuleHandleW(NULL);
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(wc);
+    wc.lpfnWndProc = DefWindowProcW;
+    wc.hInstance = hInst;
     wc.lpszClassName = CLASS_NAME;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
     wc.hbrBackground = NULL;
+    wc.style = CS_HREDRAW | CS_VREDRAW;
 
-    RegisterClass(&wc);
+    if (!RegisterClassExW(&wc)) {
+        DWORD regErr = GetLastError();
+        if (regErr != ERROR_CLASS_ALREADY_EXISTS) {
+            return false;
+        }
+    }
 
-    m_hWnd = CreateWindowEx(
-        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
-        CLASS_NAME, L"Rainbow 桌宠",
-        WS_POPUP,
+    SetLastError(0);
+    m_hWnd = CreateWindowExW(
+        WS_EX_TOPMOST, CLASS_NAME, L"Rainbow 桌宠", WS_POPUP,
         CW_USEDEFAULT, CW_USEDEFAULT,
         WINDOW_SIZE, WINDOW_SIZE,
-        NULL, NULL, m_hInst, this
+        NULL, NULL, hInst, this
     );
 
-    if (!m_hWnd) return false;
+    if (!m_hWnd) {
+        return false;
+    }
+    // Make layered for transparency
+    SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE,
+        GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+    // Subclass with our window procedure
+    SetWindowLongPtrW(m_hWnd, GWLP_WNDPROC, (LONG_PTR)WindowProc);
+    // Store this pointer
+    SetWindowLongPtrW(m_hWnd, GWLP_USERDATA, (LONG_PTR)this);
 
     // Center window
     RECT rc;
@@ -250,7 +266,7 @@ LRESULT PetWindow::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
         }
 
         case WM_NCHITTEST: {
-            LRESULT result = DefWindowProc(m_hWnd, msg, wParam, lParam);
+            LRESULT result = DefWindowProcW(m_hWnd, msg, wParam, lParam);
             if (result == HTCLIENT) return HTCAPTION;
             return result;
         }
@@ -272,18 +288,11 @@ LRESULT PetWindow::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
             PostQuitMessage(0);
             return 0;
     }
-    return DefWindowProc(m_hWnd, msg, wParam, lParam);
+    return DefWindowProcW(m_hWnd, msg, wParam, lParam);
 }
 
-static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    PetWindow* pWindow = NULL;
-    if (msg == WM_NCCREATE) {
-        auto* create = (CREATESTRUCT*)lParam;
-        pWindow = (PetWindow*)create->lpCreateParams;
-        SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)pWindow);
-    } else {
-        pWindow = (PetWindow*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-    }
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    PetWindow* pWindow = (PetWindow*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
     if (pWindow) return pWindow->HandleMessage(msg, wParam, lParam);
-    return DefWindowProc(hWnd, msg, wParam, lParam);
+    return DefWindowProcW(hWnd, msg, wParam, lParam);
 }

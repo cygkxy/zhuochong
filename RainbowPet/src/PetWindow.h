@@ -1,4 +1,8 @@
 #pragma once
+#ifndef UNICODE
+#define UNICODE
+#define _UNICODE
+#endif
 #include <windows.h>
 #include <string>
 #include <vector>
