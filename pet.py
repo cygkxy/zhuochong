@@ -782,6 +782,7 @@ class DesktopPet:
         self.main_gif = idx
         self.config['main_gif'] = idx
         self.save_config()
+        self.switch_gif(idx)
 
     def say(self, text):
         """显示对话气泡（独立窗口，位于宠物上方）"""
