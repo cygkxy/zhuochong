@@ -360,16 +360,16 @@ class DesktopPet:
         # 创建界面
         self._build_ui()
 
-        # 启动动画
-        self.switch_gif(0)
-        self._start_auto_switch()
-        self._start_walk_loop()
-
         # 窗口位置（屏幕居中）
         self.center_window()
 
         # 绑定事件
         self._bind_events()
+
+        # 启动动画（窗口就绪后加载 GIF）
+        self.switch_gif(0)
+        self._start_auto_switch()
+        self._start_walk_loop()
 
         if self.api_ready and self.proactive_chat:
             self._start_proactive_timer()
