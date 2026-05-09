@@ -498,11 +498,11 @@ class DesktopPet:
         # 主形象 + 随机概率
         r_main = _make_row()
         _row_label(r_main, "主形象")
-        main_name = STATE_LABELS[self.main_gif % len(STATE_LABELS)]
-        self.main_gif_name = tk.Label(r_main, text=main_name, fg=THEME['accent'],
-                                       bg=THEME['surface'],
-                                       font=("Microsoft YaHei", 10, "bold"))
-        self.main_gif_name.pack(side='left', padx=(4, 0))
+        self.main_gif_var = tk.StringVar(value=STATE_LABELS[self.main_gif % len(STATE_LABELS)])
+        main_menu = ttk.Combobox(r_main, textvariable=self.main_gif_var,
+                                  values=STATE_LABELS, state='readonly', width=10)
+        main_menu.pack(side='left', padx=(4, 0))
+        main_menu.bind('<<ComboboxSelected>>', self._on_main_gif_select)
         tk.Label(r_main, text="概率", fg=THEME['text_muted'], bg=THEME['surface'],
                  font=("Microsoft YaHei", 9)).pack(side='left', padx=(14, 2))
         self.main_chance_var = tk.IntVar(value=self.main_gif_chance)
@@ -762,9 +762,17 @@ class DesktopPet:
         self.config['main_gif'] = self.main_gif
         self.save_config()
         name = STATE_LABELS[self.main_gif % len(STATE_LABELS)]
-        if hasattr(self, 'main_gif_name'):
-            self.main_gif_name.configure(text=name)
+        if hasattr(self, 'main_gif_var'):
+            self.main_gif_var.set(name)
         self.say(f"设为主形象: {name} ⭐")
+
+    def _on_main_gif_select(self, e):
+        """从下拉框选择主形象"""
+        name = self.main_gif_var.get()
+        idx = STATE_LABELS.index(name)
+        self.main_gif = idx
+        self.config['main_gif'] = idx
+        self.save_config()
 
     def say(self, text):
         """显示对话气泡（独立窗口，位于宠物上方）"""
