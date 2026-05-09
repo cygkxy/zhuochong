@@ -375,10 +375,18 @@ class DesktopPet:
         )
         self.canvas.pack()
 
-        # 宠物图像（居中）
-        self.img_on_canvas = self.canvas.create_image(
-            WINDOW_SIZE // 2, WINDOW_SIZE // 2,
+        # 永久背景表情（GIF 加载失败时的兜底显示）
+        c = WINDOW_SIZE // 2
+        self._fallback_text = self.canvas.create_text(
+            c, c, text='🐾',
+            fill=THEME['text_muted'],
+            font=("Microsoft YaHei", 48),
             anchor='center',
+        )
+
+        # 宠物图像（居中，覆盖在表情上方）
+        self.img_on_canvas = self.canvas.create_image(
+            c, c, anchor='center',
         )
 
         # 对话气泡（独立窗口，稍后创建）
