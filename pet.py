@@ -193,7 +193,82 @@ class GifLoader:
             return [], []
 
 
-# ─── 桌宠主窗口 ──────────────────────────────────
+# ─── 对话记忆 ──────────────────────────────────
+
+class MemoryManager:
+        """管理对话记忆：保留最近 20 组对话 + 重点记忆"""
+
+        def __init__(self, base_dir):
+            self.mem_dir = os.path.join(base_dir, 'memory')
+            os.makedirs(self.mem_dir, exist_ok=True)
+            self.recent_file = os.path.join(self.mem_dir, 'recent.md')
+            self.key_file = os.path.join(self.mem_dir, 'key_memories.md')
+            self._init_files()
+
+        def _init_files(self):
+            if not os.path.exists(self.recent_file):
+                with open(self.recent_file, 'w', encoding='utf-8') as f:
+                    f.write('# 最近对话记录\n\n')
+            if not os.path.exists(self.key_file):
+                with open(self.key_file, 'w', encoding='utf-8') as f:
+                    f.write('# 重点记忆\n\n')
+
+        def add_exchange(self, user_msg, assistant_msg):
+            """添加一组对话，保持最近 20 组"""
+            ts = time.strftime('%Y-%m-%d %H:%M')
+            entry = '## {}\n\n**你**: {}\n\n**桌宠**: {}\n\n---\n'.format(ts, user_msg, assistant_msg)
+            with open(self.recent_file, 'a', encoding='utf-8') as f:
+                f.write(entry)
+            # 裁剪到最近 20 组
+            with open(self.recent_file, 'r', encoding='utf-8') as f:
+                text = f.read()
+            parts = text.split('---')
+            if len(parts) > 22:
+                keep = parts[:1] + parts[-(20*2):]
+                with open(self.recent_file, 'w', encoding='utf-8') as f:
+                    f.write('---'.join(keep))
+
+        def extract_memories(self, user_msg, assistant_msg):
+            """从对话中提取重点记忆"""
+            import re
+            memories = []
+            patterns = [
+                r'(?:我叫|我是|我的名字|称呼我)(\S+)',
+                r'(?:我喜欢|我爱|我最爱|我讨厌|我不喜欢)(\S+)',
+                r'(?:我)(?:生日|星座|职业|工作|学校)(?:是|在)(\S+)',
+            ]
+            for p in patterns:
+                for m in re.finditer(p, user_msg):
+                    memories.append(m.group(0))
+            if not memories:
+                return
+            with open(self.key_file, 'r', encoding='utf-8') as f:
+                existing = f.read()
+            with open(self.key_file, 'a', encoding='utf-8') as f:
+                for mem in memories:
+                    if mem not in existing:
+                        f.write('- ' + mem + '\n')
+
+        def get_context(self, max_exchanges=6):
+            """获取最近对话 + 重点记忆作为上下文"""
+            parts = []
+            try:
+                with open(self.key_file, 'r', encoding='utf-8') as f:
+                    key_text = f.read().strip()
+                if key_text and len(key_text) > 30:
+                    parts.append(key_text)
+            except:
+                pass
+            try:
+                with open(self.recent_file, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                if len(lines) > 3:
+                    recent = ''.join(lines[-max_exchanges*4:])
+                    parts.append('## 最近对话\n' + recent)
+            except:
+                pass
+            return '\n\n'.join(parts) if parts else ''
+
 
 class DesktopPet:
     def __init__(self):
@@ -224,6 +299,9 @@ class DesktopPet:
         self.proactive_interval = self.config.get('proactive_interval', 60)
         self.proactive_random = self.config.get('proactive_random', True)
         self.web_search = self.config.get('web_search', False)
+
+        # 对话记忆
+        self.memory = MemoryManager(BASE_DIR)
 
         # 状态
         self.current_idx = 0
@@ -1524,14 +1602,19 @@ class DesktopPet:
         t.start()
 
     def _call_api(self, text):
-        """带历史记录的手动对话"""
+        """带历史记录的手动对话（含记忆上下文）"""
         try:
+            mem_context = self.memory.get_context()
             system = self.api_system_prompt + '\n\n' + self._time_context()
+            if mem_context:
+                system += '\n\n## 记忆上下文\n' + mem_context
             messages = [{"role": r, "content": c} for r, c in self.chat_history[-6:]]
             messages.append({"role": "user", "content": text})
             reply = self._api_request(messages, system, max_tokens=300, temperature=0.8)
             self.chat_history.append(("user", text))
             self.chat_history.append(("assistant", reply))
+            self.memory.add_exchange(text, reply)
+            self.memory.extract_memories(text, reply)
             self.root.after(0, lambda: self._handle_api_response(reply))
         except Exception as e:
             err = str(e)
@@ -1696,10 +1779,13 @@ class DesktopPet:
             return ''
 
     def _call_api_with_search(self, text):
-        """带联网搜索的手动对话"""
+        """带联网搜索的手动对话（含记忆上下文）"""
         search_context = self._search_web(text) if self.web_search else ''
         try:
+            mem_context = self.memory.get_context()
             system = self.api_system_prompt + '\n\n' + self._time_context()
+            if mem_context:
+                system += '\n\n## 记忆上下文\n' + mem_context
             if search_context:
                 system += '\n\n当前网络信息（供参考）:\n' + search_context
             messages = [{"role": r, "content": c} for r, c in self.chat_history[-6:]]
@@ -1707,6 +1793,8 @@ class DesktopPet:
             reply = self._api_request(messages, system, max_tokens=300, temperature=0.8)
             self.chat_history.append(("user", text))
             self.chat_history.append(("assistant", reply))
+            self.memory.add_exchange(text, reply)
+            self.memory.extract_memories(text, reply)
             self.root.after(0, lambda: self._handle_api_response(reply))
         except Exception as e:
             err = str(e)
