@@ -369,22 +369,28 @@ class DesktopPet:
         self.settings_win.withdraw()
         self.settings_win.configure(bg=THEME['border'])
 
-        w, h = 340, 500
+        w, h = 360, 520
         self.settings_win.geometry(f"{w}x{h}")
 
         # 内容容器
         inner_root = tk.Frame(self.settings_win, bg=THEME['bg'])
         inner_root.pack(fill='both', expand=True, padx=1, pady=1)
 
-        # 标题
-        title_frame = tk.Frame(inner_root, bg=THEME['bg'])
-        title_frame.pack(fill='x', pady=(14, 2))
-        tk.Label(title_frame, text="⚙️  桌宠设置",
+        # 标题栏（带关闭按钮）
+        title_bar = tk.Frame(inner_root, bg=THEME['bg'])
+        title_bar.pack(fill='x', pady=(10, 0))
+        tk.Label(title_bar, text="⚙️  桌宠设置",
                  fg=THEME['text'], bg=THEME['bg'],
-                 font=("Microsoft YaHei", 14, "bold")).pack()
+                 font=("Microsoft YaHei", 14, "bold")).pack(side='left', padx=(16, 0))
+        close_btn = tk.Label(title_bar, text="✕", fg=THEME['text_muted'], bg=THEME['bg'],
+                              cursor="hand2", font=("Microsoft YaHei", 14), padx=(0, 14))
+        close_btn.pack(side='right')
+        close_btn.bind('<Enter>', lambda e: close_btn.configure(fg=THEME['text']))
+        close_btn.bind('<Leave>', lambda e: close_btn.configure(fg=THEME['text_muted']))
+        close_btn.bind('<Button-1>', lambda e: self.toggle_settings())
         # 标题下面的 accent 线
         accent_line = tk.Frame(inner_root, height=2, bg=THEME['accent'])
-        accent_line.pack(fill='x', padx=40, pady=(4, 6))
+        accent_line.pack(fill='x', padx=14, pady=(6, 6))
 
         # 可滚动区域
         scroll_container = tk.Frame(inner_root, bg=THEME['bg'])
@@ -413,23 +419,25 @@ class DesktopPet:
         scroll_canvas.bind('<Leave>', lambda e: scroll_canvas.unbind_all('<MouseWheel>'))
 
         def _section_header(text):
-            """带左侧色条的 section 标题"""
+            """带顶部分隔线和左侧色条的 section 标题"""
+            # 分隔线
+            tk.Frame(inner_frame, height=1, bg=THEME['border']).pack(fill='x', pady=(8, 0))
             hdr = tk.Frame(inner_frame, bg=THEME['bg'])
-            hdr.pack(fill='x', pady=(10, 2))
+            hdr.pack(fill='x', pady=(6, 4))
             bar = tk.Frame(hdr, width=3, bg=THEME['accent'])
-            bar.pack(side='left', fill='y', padx=(2, 6))
+            bar.pack(side='left', fill='y', padx=(8, 6))
             tk.Label(hdr, text=text, fg=THEME['accent'], bg=THEME['bg'],
                      font=("Microsoft YaHei", 10, "bold"), anchor='w').pack(side='left', fill='x')
 
         def _make_row():
             """创建设置行容器"""
             r = tk.Frame(inner_frame, bg=THEME['surface'])
-            r.pack(fill='x', pady=2, padx=2)
+            r.pack(fill='x', pady=3, padx=6)
             return r
 
         def _row_label(parent, text, width=7):
             tk.Label(parent, text=text, fg=THEME['text_sec'], bg=THEME['surface'],
-                     font=("Microsoft YaHei", 10), width=width, anchor='w').pack(side='left', padx=(10, 4))
+                     font=("Microsoft YaHei", 10), width=width, anchor='w').pack(side='left', padx=(12, 4))
 
         def _value_label(parent, width=3):
             lbl = tk.Label(parent, text='', fg=THEME['text_muted'], bg=THEME['surface'],
@@ -496,7 +504,7 @@ class DesktopPet:
         # ─── 气泡 ───
         _section_header("气泡")
 
-        # 气泡颜色
+        # 气泡颜色（色块选择）
         r5 = _make_row()
         _row_label(r5, "颜色")
         colors = {"紫色": "#2a2a4a", "蓝色": "#1a3a6a", "绿色": "#1a4a2a",
@@ -507,25 +515,32 @@ class DesktopPet:
             if code == self.bubble_color:
                 current_color_name = name
                 break
+        # 当前选中的颜色名（用于 hover 提示）
+        self._bubble_sel_name = current_color_name
+        # 色块行
+        swatch_row = tk.Frame(r5, bg=THEME['surface'])
+        swatch_row.pack(side='left', fill='x', expand=True, padx=(4, 8))
+        for cname, chex in colors.items():
+            is_active = (cname == current_color_name)
+            outer = tk.Frame(swatch_row, bg=THEME['accent'] if is_active else THEME['surface'],
+                             bd=0, relief='flat')
+            outer.pack(side='left', padx=2)
+            chip = tk.Frame(outer, bg=chex, width=20, height=20, bd=0, relief='flat')
+            chip.pack(padx=2, pady=2)
+            chip.bind('<Button-1>', lambda e, n=cname, h=chex: self._on_pick_color(n, h))
+            chip.bind('<Enter>', lambda e, n=cname, o=outer: o.configure(bg=THEME['accent']))
+            chip.bind('<Leave>', lambda e, n=cname, o=outer, act=is_active:
+                      o.configure(bg=THEME['accent'] if act else THEME['surface']))
+            if is_active:
+                # 选中标记
+                tk.Label(outer, text="✓", fg='white', bg=chex,
+                         font=("Microsoft YaHei", 8)).pack(padx=2, pady=0)
+
         self.bubble_color_var = tk.StringVar(value=current_color_name)
-        color_opts = ttk.Combobox(r5, textvariable=self.bubble_color_var,
-                                   values=list(colors.keys()),
-                                   state='readonly', width=10)
-        color_opts.pack(side='left', padx=(4, 4))
-        # 颜色预览圆块
-        preview_frame = tk.Frame(r5, bg=THEME['border_light'], bd=1, relief='flat')
-        preview_frame.pack(side='left')
-        self.color_preview = tk.Canvas(preview_frame, width=18, height=18,
+        self.color_preview = tk.Canvas(r5, width=18, height=18,
                                         bg=colors[current_color_name],
                                         highlightthickness=0, bd=0)
-        self.color_preview.pack(padx=1, pady=1)
-        def on_color_change(*a):
-            c = colors.get(self.bubble_color_var.get(), '#2a2a4a')
-            self.color_preview.configure(bg=c)
-            self.bubble_color = c
-            self.config['bubble_color'] = c
-            self.save_config()
-        self.bubble_color_var.trace_add('write', on_color_change)
+        self.color_preview.pack(side='left', padx=(0, 8))
 
         # 气泡字数
         r6 = _make_row()
@@ -571,7 +586,7 @@ class DesktopPet:
                                activebackground=THEME['surface'],
                                command=self._on_proactive_toggle)
         cb_pc.pack(side='left', padx=(4, 0))
-        # 随机间隔
+        # 模式选择
         self.proactive_rand_var = tk.BooleanVar(value=self.proactive_random)
         cb_rand = tk.Checkbutton(r8, variable=self.proactive_rand_var,
                                  bg=THEME['surface'], fg=THEME['text'],
@@ -581,17 +596,18 @@ class DesktopPet:
         cb_rand.pack(side='left', padx=(2, 0))
         tk.Label(r8, text="随机", fg=THEME['text_muted'], bg=THEME['surface'],
                  font=("Microsoft YaHei", 9)).pack(side='left')
-        # 固定间隔
-        tk.Label(r8, text="间隔(秒)", fg=THEME['text_muted'], bg=THEME['surface'],
-                 font=("Microsoft YaHei", 9)).pack(side='left', padx=(8, 0))
+        tk.Label(r8, text="定时间隔", fg=THEME['text_muted'], bg=THEME['surface'],
+                 font=("Microsoft YaHei", 9)).pack(side='left', padx=(14, 4))
         int_ef = tk.Frame(r8, bg=THEME['border_light'], bd=1, relief='flat')
-        int_ef.pack(side='left', padx=(4, 10))
+        int_ef.pack(side='left')
         self.proactive_int_var = tk.IntVar(value=self.proactive_interval)
         tk.Entry(int_ef, textvariable=self.proactive_int_var,
                  bg=THEME['input_bg'], fg=THEME['text'], bd=0,
                  font=("Microsoft YaHei", 10),
                  width=4, justify='center',
                  insertbackground=THEME['text']).pack(padx=2, pady=2)
+        tk.Label(r8, text="秒", fg=THEME['text_muted'], bg=THEME['surface'],
+                 font=("Microsoft YaHei", 9)).pack(side='left', padx=(4, 0))
 
         # 联网搜索
         r9 = _make_row()
@@ -656,15 +672,15 @@ class DesktopPet:
         self.api_sp_var = tk.StringVar(value=self.api_system_prompt)
         _styled_entry(r14, self.api_sp_var, font=("Microsoft YaHei", 9))
 
-        # 保存按钮
+        # 保存按钮（全宽）
         btn_outer = tk.Frame(inner_frame, bg=THEME['bg'])
-        btn_outer.pack(pady=(12, 4))
+        btn_outer.pack(fill='x', pady=(12, 4), padx=12)
         save_btn = tk.Label(
             btn_outer, text="💾  保存 API 设置",
             fg=THEME['text'], bg=THEME['accent_dark'], cursor="hand2",
-            font=("Microsoft YaHei", 10), padx=16, pady=6,
+            font=("Microsoft YaHei", 11), padx=0, pady=8,
         )
-        save_btn.pack()
+        save_btn.pack(fill='x')
         save_btn.bind('<Enter>', lambda e: save_btn.configure(bg=THEME['accent']))
         save_btn.bind('<Leave>', lambda e: save_btn.configure(bg=THEME['accent_dark']))
         save_btn.bind('<Button-1>', lambda e: self._save_api_settings())
@@ -673,16 +689,7 @@ class DesktopPet:
         self.api_status_label = tk.Label(inner_frame, text="", fg=THEME['success'],
                                           bg=THEME['bg'],
                                           font=("Microsoft YaHei", 9))
-        self.api_status_label.pack()
-
-        # 关闭按钮
-        close_btn = tk.Label(
-            inner_frame, text="✕  关闭",
-            fg=THEME['text_muted'], bg=THEME['bg'], cursor="hand2",
-            font=("Microsoft YaHei", 10),
-        )
-        close_btn.pack(pady=(4, 10))
-        close_btn.bind('<Button-1>', lambda e: self.toggle_settings())
+        self.api_status_label.pack(pady=(2, 6))
 
         # 绑定 ESC 关闭
         self.root.bind('<Escape>', lambda e: self._close_settings())
@@ -1186,6 +1193,16 @@ class DesktopPet:
         elif p == 'deepseek':
             self.api_base_var.set('https://api.deepseek.com')
             self.api_model_var.set('deepseek-chat')
+
+    def _on_pick_color(self, name, hex_color):
+        """色块点击选择气泡颜色"""
+        self.bubble_color = hex_color
+        self.bubble_color_var.set(name)
+        self.config['bubble_color'] = hex_color
+        self.save_config()
+        # 刷新设置面板颜色预览
+        if hasattr(self, 'color_preview'):
+            self.color_preview.configure(bg=hex_color)
 
     def _on_proactive_toggle(self):
         self.proactive_chat = self.proactive_var.get()
