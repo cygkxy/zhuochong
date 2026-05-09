@@ -498,9 +498,9 @@ class DesktopPet:
         # 主形象 + 随机概率
         r_main = _make_row()
         _row_label(r_main, "主形象")
-        self.main_gif_var = tk.StringVar(value=STATE_LABELS[self.main_gif % len(STATE_LABELS)])
+        self.main_gif_var = tk.StringVar(value=str(self.main_gif + 1))
         main_menu = ttk.Combobox(r_main, textvariable=self.main_gif_var,
-                                  values=STATE_LABELS, state='readonly', width=10)
+                                  values=[str(i) for i in range(1, len(STATE_LABELS)+1)], state='readonly', width=6)
         main_menu.pack(side='left', padx=(4, 0))
         main_menu.bind('<<ComboboxSelected>>', self._on_main_gif_select)
         tk.Label(r_main, text="概率", fg=THEME['text_muted'], bg=THEME['surface'],
