@@ -1310,7 +1310,8 @@ class DesktopPet:
         self.chat_win.overrideredirect(True)
         self.chat_win.attributes('-topmost', True)
         self.chat_win.configure(bg=THEME['border'])
-        cw, ch = 280, 135
+        cw = 280
+        ch = 105
         px = self.root.winfo_x() + WINDOW_SIZE + 10
         py = self.root.winfo_y()
         sw = self.root.winfo_screenwidth()
@@ -1318,32 +1319,17 @@ class DesktopPet:
             px = max(0, self.root.winfo_x() - cw - 10)
         self.chat_win.geometry(f"{cw}x{ch}+{px}+{py}")
 
-        # 内层内容容器（边框效果）
+        # 内容容器
         chat_inner = tk.Frame(self.chat_win, bg=THEME['bg'])
         chat_inner.pack(fill='both', expand=True, padx=1, pady=1)
 
-        # 标题栏（accent 色底部边框）
-        tb = tk.Frame(chat_inner, bg=THEME['surface'])
-        tb.pack(fill='x')
-        tk.Label(tb, text="💬  对我说...", fg=THEME['text_sec'], bg=THEME['surface'],
-                 font=("Microsoft YaHei", 10), padx=12, pady=6).pack(side='left')
-        cx_btn = tk.Label(tb, text="✕", fg=THEME['text_muted'], bg=THEME['surface'],
-                          cursor="hand2",
-                          font=("Microsoft YaHei", 13), padx=12, pady=6)
-        cx_btn.pack(side='right')
-        cx_btn.bind('<Enter>', lambda e: cx_btn.configure(fg=THEME['text']))
-        cx_btn.bind('<Leave>', lambda e: cx_btn.configure(fg=THEME['text_muted']))
-        cx_btn.bind('<Button-1>', lambda e: self._close_chat())
-        # 标题栏底线
-        tk.Frame(chat_inner, height=2, bg=THEME['accent']).pack(fill='x')
-
         # 输入区
         i_f = tk.Frame(chat_inner, bg=THEME['bg'])
-        i_f.pack(fill='both', expand=True, padx=8, pady=(6, 2))
-        # 带边框的输入框
+        i_f.pack(fill='both', expand=True, padx=6, pady=(6, 2))
         input_outer = tk.Frame(i_f, bg=THEME['border_light'], bd=1, relief='flat')
         input_outer.pack(fill='both', expand=True)
-        self.chat_entry = tk.Text(input_outer, height=2, bg=THEME['input_bg'], fg=THEME['text'],
+        self.chat_entry = tk.Text(input_outer, height=1,
+                                   bg=THEME['input_bg'], fg=THEME['text'],
                                    font=("Microsoft YaHei", 11), bd=0,
                                    insertbackground=THEME['text'], wrap='word',
                                    padx=6, pady=4)
@@ -1352,11 +1338,11 @@ class DesktopPet:
 
         # 按钮行
         b_f = tk.Frame(chat_inner, bg=THEME['bg'])
-        b_f.pack(fill='x', padx=8, pady=(2, 8))
+        b_f.pack(fill='x', padx=6, pady=(0, 6))
         self.thinking_label = tk.Label(b_f, text="", fg=THEME['text_muted'], bg=THEME['bg'],
                                        font=("Microsoft YaHei", 9))
         self.thinking_label.pack(side='left')
-        self.send_btn = tk.Label(b_f, text="发送 (Enter)", fg=THEME['text'],
+        self.send_btn = tk.Label(b_f, text="发送 (Enter)", fg='white',
                                   bg=THEME['accent_dark'], cursor="hand2",
                                   font=("Microsoft YaHei", 10), padx=14, pady=4)
         self.send_btn.pack(side='right')
