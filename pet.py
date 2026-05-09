@@ -12,6 +12,7 @@ import threading
 import time
 import urllib.request
 import urllib.parse
+import urllib.error
 import ssl
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -1439,8 +1440,17 @@ class DesktopPet:
 
         data = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(url, data=data, headers=headers, method='POST')
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=timeout) as resp:
-            body = json.loads(resp.read().decode('utf-8'))
+        try:
+            with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=timeout) as resp:
+                body = json.loads(resp.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            detail = ''
+            try:
+                detail = json.loads(e.read().decode('utf-8', errors='replace'))
+                detail = str(detail)
+            except:
+                pass
+            raise Exception(f"HTTP {e.code}: {e.reason}{' - ' + detail[:100] if detail else ''}")
         return extract(body).strip()
 
     def _time_context(self):
