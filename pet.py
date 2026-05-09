@@ -188,9 +188,14 @@ class GifLoader:
             self.cache[name] = (size, frames, durations)
             return frames, durations
 
-        except Exception as e:
-            print(f"加载 GIF 失败 {name}: {e}")
-            return [], []
+        except Exception:
+            # PIL 失败时尝试 Tkinter 原生加载 GIF
+            try:
+                tk_img = tk.PhotoImage(file=path)
+                self.cache[name] = (size, [tk_img], [100])
+                return [tk_img], [100]
+            except Exception:
+                return [], []
 
 
 # ─── 对话记忆 ──────────────────────────────────
