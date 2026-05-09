@@ -41,7 +41,6 @@ DEFAULT_CONFIG = {
     'size': 120,
     'speed': 3,
     'auto_walk': True,
-    'fixed_position': False,
     'switch_interval': 5000,
     'follow_mouse': False,
     # 气泡设置
@@ -212,7 +211,6 @@ class DesktopPet:
         self.size = self.config['size']
         self.speed = self.config['speed']
         self.auto_walk = self.config['auto_walk']
-        self.fixed_position = self.config.get('fixed_position', False)
         self.switch_interval = self.config['switch_interval']
         self.follow_mouse = self.config['follow_mouse']
         self.bubble_color = self.config.get('bubble_color', '#2a2a4a')
@@ -248,7 +246,7 @@ class DesktopPet:
         self._proactive_timeout = None
 
         # 从配置加载 API 设置
-        self.api_provider = self.config.get('api_provider', 'openai')
+        self.api_provider = self.config.get('api_provider', 'deepseek')
         self.api_key = self.config.get('api_key', '')
         self.api_model = self.config.get('api_model', 'gpt-4o-mini')
         self.api_base = self.config.get('api_base', 'https://api.openai.com/v1')
@@ -325,8 +323,6 @@ class DesktopPet:
         items = [
             ("🚶  散步模式", self.toggle_walk),
             ("👆  跟随鼠标", self.toggle_follow),
-            ("🖼️  固定画面", self.toggle_fixed),
-            ("💃  跳舞", lambda: self.switch_gif(13)),
             None,  # separator
             ("💬  对话", self.show_chat),
             ("⏭️  切换动作", self.next_anim),
@@ -472,7 +468,7 @@ class DesktopPet:
                   variable=self.speed_var, command=self._on_speed).pack(
             side='left', fill='x', expand=True, padx=(4, 4))
 
-        # 自动漫游 + 固定位置
+        # 自动漫游
         r3 = _make_row()
         _row_label(r3, "自动漫游")
         self.walk_var = tk.BooleanVar(value=self.auto_walk)
@@ -482,20 +478,11 @@ class DesktopPet:
                             activebackground=THEME['surface'],
                             command=self._on_auto_walk)
         cb.pack(side='left', padx=(4, 0))
-        tk.Label(r3, text="固定画面", fg=THEME['text_muted'], bg=THEME['surface'],
-                 font=("Microsoft YaHei", 9)).pack(side='left', padx=(14, 2))
-        self.fixed_var = tk.BooleanVar(value=self.fixed_position)
-        cb_fix = tk.Checkbutton(r3, variable=self.fixed_var,
-                                bg=THEME['surface'], fg=THEME['text'],
-                                selectcolor=THEME['bg'],
-                                activebackground=THEME['surface'],
-                                command=self._on_fixed_toggle)
-        cb_fix.pack(side='left')
 
         r4 = _make_row()
         _row_label(r4, "切换间隔")
         self.interval_var = tk.StringVar(value=str(self.switch_interval // 1000))
-        intervals = ["3秒", "5秒", "8秒", "15秒"]
+        intervals = ["不切换", "3秒", "5秒", "8秒", "15秒"]
         menu = ttk.Combobox(r4, values=intervals,
                             state='readonly', width=10)
         menu.current(1)
@@ -626,16 +613,6 @@ class DesktopPet:
 
         # ─── AI 对话 ───
         _section_header("AI 对话")
-
-        # Provider
-        r10 = _make_row()
-        _row_label(r10, "提供方")
-        self.api_provider_var = tk.StringVar(value=self.api_provider)
-        provider_menu = ttk.Combobox(r10, textvariable=self.api_provider_var,
-                                     values=["openai", "claude", "deepseek", "自定义"],
-                                     state='readonly', width=12)
-        provider_menu.pack(side='left', padx=(4, 4))
-        provider_menu.bind('<<ComboboxSelected>>', self._on_provider_change)
 
         # API Key
         r11 = _make_row()
@@ -877,11 +854,11 @@ class DesktopPet:
     def _do_auto_switch(self):
         if not getattr(self, '_auto_switch_running', False):
             return
-        if self.fixed_position:
+        if self.switch_interval > 0:
+            self.next_anim()
             self.root.after(self.switch_interval, self._do_auto_switch)
-            return
-        self.next_anim()
-        self.root.after(self.switch_interval, self._do_auto_switch)
+        else:
+            self.root.after(1000, self._do_auto_switch)  # 不切换也保持轮询
 
     def stop_auto_switch(self):
         self._auto_switch_running = False
@@ -1015,23 +992,9 @@ class DesktopPet:
         self.follow_mouse = not self.follow_mouse
         if self.follow_mouse:
             self.is_walking = False
-            self.fixed_position = False
             self.say("跟着你~ 👆")
         else:
             self.say("好哒~")
-
-    def toggle_fixed(self):
-        """切换固定画面（停止自动切换动画）"""
-        self.fixed_position = not self.fixed_position
-        if self.fixed_position:
-            self.config['fixed_position'] = True
-            self.say("画面固定了~ 🖼️")
-        else:
-            self.config['fixed_position'] = False
-            self.say("继续切换~")
-        self.save_config()
-        if hasattr(self, 'fixed_var'):
-            self.fixed_var.set(self.fixed_position)
 
     # ─── 事件绑定 ────────────────────────────────
 
@@ -1053,7 +1016,6 @@ class DesktopPet:
         self.root.bind('<Right>', lambda e: self.next_anim())
         self.root.bind('<space>', lambda e: self.random_anim())
         self.root.bind('<w>', lambda e: self.toggle_walk())
-        self.root.bind('<f>', lambda e: self.toggle_fixed())
         self.root.bind('<s>', lambda e: self.toggle_settings())
         self.root.bind('<c>', lambda e: self.show_chat())
         self.root.bind('<C>', lambda e: self.show_chat())
@@ -1181,14 +1143,12 @@ class DesktopPet:
         self.config['auto_walk'] = self.auto_walk
         self.save_config()
 
-    def _on_fixed_toggle(self):
-        self.fixed_position = self.fixed_var.get()
-        self.config['fixed_position'] = self.fixed_position
-        self.save_config()
-
     def _on_interval(self, text):
-        mapping = {"3秒": 3000, "5秒": 5000, "8秒": 8000, "15秒": 15000}
-        ms = mapping.get(text, 5000)
+        if text == "不切换":
+            ms = 0
+        else:
+            mapping = {"3秒": 3000, "5秒": 5000, "8秒": 8000, "15秒": 15000}
+            ms = mapping.get(text, 5000)
         self.switch_interval = ms
         self.config['switch_interval'] = ms
         self.save_config()
@@ -1198,18 +1158,6 @@ class DesktopPet:
     def _toggle_key_show(self):
         self._key_hidden = not self._key_hidden
         self.api_key_entry.configure(show='*' if self._key_hidden else '')
-
-    def _on_provider_change(self, e):
-        p = self.api_provider_var.get()
-        if p == 'openai':
-            self.api_base_var.set('https://api.openai.com/v1')
-            self.api_model_var.set('gpt-4o-mini')
-        elif p == 'claude':
-            self.api_base_var.set('https://api.anthropic.com')
-            self.api_model_var.set('claude-sonnet-4-20250514')
-        elif p == 'deepseek':
-            self.api_base_var.set('https://api.deepseek.com')
-            self.api_model_var.set('deepseek-v4-flash')
 
     def _pick_color(self, name):
         """色块点击选择气泡颜色"""
@@ -1266,13 +1214,12 @@ class DesktopPet:
         self.save_config()
 
     def _save_api_settings(self):
-        self.api_provider = self.api_provider_var.get()
         self.api_key = self.api_key_var.get()
         self.api_model = self.api_model_var.get()
         self.api_base = self.api_base_var.get().rstrip('/')
         self.api_system_prompt = self.api_sp_var.get()
         self.config.update({
-            'api_provider': self.api_provider,
+            'api_provider': 'deepseek',
             'api_key': self.api_key,
             'api_model': self.api_model,
             'api_base': self.api_base,
@@ -1435,36 +1382,20 @@ class DesktopPet:
 
     def _api_request(self, messages, system_prompt='', max_tokens=300, temperature=0.8, timeout=30):
         """统一 API 请求，支持 OpenAI / Claude / 兼容接口"""
-        if self.api_provider == 'claude':
-            url = self.api_base.rstrip('/') + '/v1/messages'
-            headers = {
-                "Content-Type": "application/json",
-                "x-api-key": self.api_key,
-                "anthropic-version": "2023-06-01",
-            }
-            payload = {
-                "model": self.api_model,
-                "system": system_prompt or '',
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-            }
-            extract = lambda b: b['content'][0]['text']
-        else:
-            url = self.api_base.rstrip('/') + '/chat/completions'
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}",
-            }
-            full = [{"role": "system", "content": system_prompt}] if system_prompt else []
-            full.extend(messages)
-            payload = {
-                "model": self.api_model,
-                "messages": full,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-            }
-            extract = lambda b: b['choices'][0]['message']['content']
+        url = self.api_base.rstrip('/') + '/chat/completions'
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+        full = [{"role": "system", "content": system_prompt}] if system_prompt else []
+        full.extend(messages)
+        payload = {
+            "model": self.api_model,
+            "messages": full,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        extract = lambda b: b['choices'][0]['message']['content']
 
         data = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(url, data=data, headers=headers, method='POST')
@@ -1530,7 +1461,8 @@ class DesktopPet:
         if hasattr(self, 'send_btn') and self.send_btn.winfo_exists():
             self.send_btn.configure(text="发送 (Enter)", bg=THEME['accent_dark'])
         self.say(reply)
-        self.switch_gif(0)
+        if self.switch_interval > 0:
+            self.switch_gif(0)
 
     def _handle_api_error(self, error_msg):
         self._thinking = False
@@ -1647,8 +1579,8 @@ class DesktopPet:
             self._schedule_next_proactive()
             return
         self.say(reply)
-        self.switch_gif(random.randint(0, len(GIF_NAMES) - 1))
-        self.switch_gif(random.randint(0, len(GIF_NAMES) - 1))
+        if self.switch_interval > 0:
+            self.switch_gif(random.randint(0, len(GIF_NAMES) - 1))
         self._schedule_next_proactive()
 
     def _schedule_next_proactive(self):
