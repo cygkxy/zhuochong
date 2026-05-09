@@ -41,6 +41,7 @@ DEFAULT_CONFIG = {
     'size': 120,
     'speed': 3,
     'auto_walk': True,
+    'fixed_position': False,
     'switch_interval': 5000,
     'follow_mouse': False,
     # 气泡设置
@@ -222,6 +223,7 @@ class DesktopPet:
         self.size = self.config['size']
         self.speed = self.config['speed']
         self.auto_walk = self.config['auto_walk']
+        self.fixed_position = self.config.get('fixed_position', False)
         self.switch_interval = self.config['switch_interval']
         self.follow_mouse = self.config['follow_mouse']
         self.bubble_color = self.config.get('bubble_color', '#2a2a4a')
@@ -334,6 +336,7 @@ class DesktopPet:
         items = [
             ("🚶  散步模式", self.toggle_walk),
             ("👆  跟随鼠标", self.toggle_follow),
+            ("📌  固定位置", self.toggle_fixed),
             ("💃  跳舞", lambda: self.switch_gif(13)),
             None,  # separator
             ("💬  对话", self.show_chat),
@@ -480,7 +483,7 @@ class DesktopPet:
                   variable=self.speed_var, command=self._on_speed).pack(
             side='left', fill='x', expand=True, padx=(4, 4))
 
-        # 自动漫游 + 切换间隔
+        # 自动漫游 + 固定位置
         r3 = _make_row()
         _row_label(r3, "自动漫游")
         self.walk_var = tk.BooleanVar(value=self.auto_walk)
@@ -490,6 +493,15 @@ class DesktopPet:
                             activebackground=THEME['surface'],
                             command=self._on_auto_walk)
         cb.pack(side='left', padx=(4, 0))
+        tk.Label(r3, text="固定位置", fg=THEME['text_muted'], bg=THEME['surface'],
+                 font=("Microsoft YaHei", 9)).pack(side='left', padx=(14, 2))
+        self.fixed_var = tk.BooleanVar(value=self.fixed_position)
+        cb_fix = tk.Checkbutton(r3, variable=self.fixed_var,
+                                bg=THEME['surface'], fg=THEME['text'],
+                                selectcolor=THEME['bg'],
+                                activebackground=THEME['surface'],
+                                command=self._on_fixed_toggle)
+        cb_fix.pack(side='left')
 
         r4 = _make_row()
         _row_label(r4, "切换间隔")
@@ -898,7 +910,7 @@ class DesktopPet:
         if not getattr(self, '_walk_loop_running', False):
             return
 
-        if not self.is_dragging:
+        if not self.is_dragging and not self.fixed_position:
             if self.follow_mouse:
                 self._do_follow_mouse()
             elif self.is_walking:
@@ -1016,9 +1028,25 @@ class DesktopPet:
         self.follow_mouse = not self.follow_mouse
         if self.follow_mouse:
             self.is_walking = False
+            self.fixed_position = False
             self.say("跟着你~ 👆")
         else:
             self.say("好哒~")
+
+    def toggle_fixed(self):
+        """切换固定位置"""
+        self.fixed_position = not self.fixed_position
+        if self.fixed_position:
+            self.is_walking = False
+            self.follow_mouse = False
+            self.config['fixed_position'] = True
+            self.say("不动了~ 📌")
+        else:
+            self.config['fixed_position'] = False
+            self.say("好的~")
+        self.save_config()
+        if hasattr(self, 'fixed_var'):
+            self.fixed_var.set(self.fixed_position)
 
     # ─── 事件绑定 ────────────────────────────────
 
@@ -1043,6 +1071,7 @@ class DesktopPet:
         self.root.bind('<Right>', lambda e: self.next_anim())
         self.root.bind('<space>', lambda e: self.random_anim())
         self.root.bind('<w>', lambda e: self.toggle_walk())
+        self.root.bind('<f>', lambda e: self.toggle_fixed())
         self.root.bind('<s>', lambda e: self.toggle_settings())
         self.root.bind('<c>', lambda e: self.show_chat())
         self.root.bind('<C>', lambda e: self.show_chat())
@@ -1168,6 +1197,14 @@ class DesktopPet:
     def _on_auto_walk(self):
         self.auto_walk = self.walk_var.get()
         self.config['auto_walk'] = self.auto_walk
+        self.save_config()
+
+    def _on_fixed_toggle(self):
+        self.fixed_position = self.fixed_var.get()
+        if self.fixed_position:
+            self.is_walking = False
+            self.follow_mouse = False
+        self.config['fixed_position'] = self.fixed_position
         self.save_config()
 
     def _on_interval(self, text):
