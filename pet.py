@@ -188,13 +188,24 @@ class GifLoader:
             self.cache[name] = (size, frames, durations)
             return frames, durations
 
-        except Exception:
+        except Exception as e:
+            # 写诊断日志
+            try:
+                with open(os.path.join(os.path.dirname(self.gif_dir), 'gif_debug.log'), 'a') as log:
+                    log.write(f'PIL failed: {name} - {e}\n')
+            except:
+                pass
             # PIL 失败时尝试 Tkinter 原生加载 GIF
             try:
                 tk_img = tk.PhotoImage(file=path)
                 self.cache[name] = (size, [tk_img], [100])
                 return [tk_img], [100]
-            except Exception:
+            except Exception as e2:
+                try:
+                    with open(os.path.join(os.path.dirname(self.gif_dir), 'gif_debug.log'), 'a') as log:
+                        log.write(f'Tk fallback also failed: {name} - {e2}\n')
+                except:
+                    pass
                 return [], []
 
 
@@ -815,8 +826,8 @@ class DesktopPet:
         # 加载帧
         frames, durations = self.loader.load(name, self.size)
         if not frames:
-            # GIF 加载失败时显示占位图案
-            self._show_placeholder(idx)
+            # 总是显示 🐾（兜底）
+            self.canvas.tag_raise(self._fallback_text)
             return
 
         self.frames = frames
@@ -830,20 +841,6 @@ class DesktopPet:
         # 播放第一帧
         self._play_frame()
 
-    def _show_placeholder(self, idx):
-        """GIF 加载失败时显示占位符"""
-        self.frames = []
-        c = WINDOW_SIZE // 2
-        r = min(self.size, WINDOW_SIZE - 20) // 2
-        color = STATE_COLORS[idx % len(STATE_COLORS)]
-        self.canvas.delete('placeholder')
-        self.canvas.create_oval(c - r, c - r, c + r, c + r,
-                                 fill=color, outline=THEME['accent'],
-                                 width=2, tags='placeholder')
-        label = STATE_LABELS[idx % len(STATE_LABELS)]
-        self.canvas.create_text(c, c, text=label[0],
-                                fill='white', font=("Microsoft YaHei", r // 2),
-                                tags='placeholder')
 
     def _play_frame(self):
         """播放当前帧并调度下一帧"""
