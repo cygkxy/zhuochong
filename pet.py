@@ -1193,7 +1193,7 @@ class DesktopPet:
             self.api_model_var.set('claude-sonnet-4-20250514')
         elif p == 'deepseek':
             self.api_base_var.set('https://api.deepseek.com')
-            self.api_model_var.set('deepseek-chat')
+            self.api_model_var.set('deepseek-v4-flash')
 
     def _pick_color(self, name):
         """色块点击选择气泡颜色"""
@@ -1328,7 +1328,7 @@ class DesktopPet:
         self.chat_win.attributes('-topmost', True)
         self.chat_win.configure(bg=THEME['border'])
         cw = 280
-        ch = 105
+        ch = 118
         px = self.root.winfo_x() + WINDOW_SIZE + 10
         py = self.root.winfo_y()
         sw = self.root.winfo_screenwidth()
@@ -1340,9 +1340,21 @@ class DesktopPet:
         chat_inner = tk.Frame(self.chat_win, bg=THEME['bg'])
         chat_inner.pack(fill='both', expand=True, padx=1, pady=1)
 
+        # 关闭按钮（右上角）
+        top_row = tk.Frame(chat_inner, bg=THEME['bg'])
+        top_row.pack(fill='x', padx=4, pady=(2, 0))
+        tk.Label(top_row, text="💬  对话", fg=THEME['text_muted'], bg=THEME['bg'],
+                 font=("Microsoft YaHei", 9)).pack(side='left')
+        cx = tk.Label(top_row, text="✕", fg=THEME['text_muted'], bg=THEME['bg'],
+                      cursor="hand2", font=("Microsoft YaHei", 11))
+        cx.pack(side='right')
+        cx.bind('<Enter>', lambda e: cx.configure(fg=THEME['text']))
+        cx.bind('<Leave>', lambda e: cx.configure(fg=THEME['text_muted']))
+        cx.bind('<Button-1>', lambda e: self._close_chat())
+
         # 输入区
         i_f = tk.Frame(chat_inner, bg=THEME['bg'])
-        i_f.pack(fill='both', expand=True, padx=6, pady=(6, 2))
+        i_f.pack(fill='both', expand=True, padx=6, pady=(2, 2))
         input_outer = tk.Frame(i_f, bg=THEME['border_light'], bd=1, relief='flat')
         input_outer.pack(fill='both', expand=True)
         self.chat_entry = tk.Text(input_outer, height=1,
