@@ -107,17 +107,6 @@ STATE_COLORS = [
     "#00BFFF", "#FFD700", "#FF69B4", "#FFB6C1",
 ]
 
-SPEECHES = [
-    "今天好开心！", "有点困了呢…",
-    "你好呀！", "陪我玩~", "嗯…在想事情",
-    "哇！", "好无聊啊…", "喜欢！",
-    "嘿嘿~", "天气真好~", "想吃点东西…",
-    "来追我呀！", "好棒！", "唔…",
-    "你好！", "加油！", "休息一下吧",
-    "好神奇哦！", "嗯嗯！",
-    "好厉害！", "再玩一会儿嘛~",
-]
-
 TRANSPARENT_COLOR = "#000001"  # 透明色
 WINDOW_SIZE = 240  # 窗口固定尺寸（画布大小）
 
@@ -336,7 +325,7 @@ class DesktopPet:
         items = [
             ("🚶  散步模式", self.toggle_walk),
             ("👆  跟随鼠标", self.toggle_follow),
-            ("📌  固定位置", self.toggle_fixed),
+            ("🖼️  固定画面", self.toggle_fixed),
             ("💃  跳舞", lambda: self.switch_gif(13)),
             None,  # separator
             ("💬  对话", self.show_chat),
@@ -493,7 +482,7 @@ class DesktopPet:
                             activebackground=THEME['surface'],
                             command=self._on_auto_walk)
         cb.pack(side='left', padx=(4, 0))
-        tk.Label(r3, text="固定位置", fg=THEME['text_muted'], bg=THEME['surface'],
+        tk.Label(r3, text="固定画面", fg=THEME['text_muted'], bg=THEME['surface'],
                  font=("Microsoft YaHei", 9)).pack(side='left', padx=(14, 2))
         self.fixed_var = tk.BooleanVar(value=self.fixed_position)
         cb_fix = tk.Checkbutton(r3, variable=self.fixed_var,
@@ -785,7 +774,10 @@ class DesktopPet:
         self.speech_win.attributes('-topmost', True)
         self.speech_win.configure(bg=THEME['bg'])
 
-        # 气泡主体
+        # 气泡主体（wraplength 根据文字长度自适应）
+        text_len = len(text)
+        char_w = 11  # 中文字符平均像素宽度
+        wrap = min(max(text_len * char_w + 20, 120), 300)
         border_frame = tk.Frame(self.speech_win, bg=THEME['border'], bd=0)
         border_frame.pack(padx=2, pady=(2, 0))
         bubble_body = tk.Frame(border_frame, bg=self.bubble_color, bd=0)
@@ -794,7 +786,7 @@ class DesktopPet:
             bubble_body, text=text,
             fg='white', bg=self.bubble_color,
             font=("Microsoft YaHei", 10),
-            wraplength=280,
+            wraplength=wrap,
             padx=14, pady=8,
         )
         label.pack()
@@ -859,13 +851,6 @@ class DesktopPet:
             by = 0
         self.speech_win.geometry(f"+{bx}+{by}")
 
-    def random_speak(self):
-        """随机说话（低概率触发，避免刷屏）"""
-        if random.random() > 0.06:
-            return
-        text = random.choice(SPEECHES)
-        self.say(text)
-
     # ─── 窗口操作 ────────────────────────────────
 
     def center_window(self):
@@ -892,7 +877,9 @@ class DesktopPet:
     def _do_auto_switch(self):
         if not getattr(self, '_auto_switch_running', False):
             return
-        # 不切换太频繁
+        if self.fixed_position:
+            self.root.after(self.switch_interval, self._do_auto_switch)
+            return
         self.next_anim()
         self.root.after(self.switch_interval, self._do_auto_switch)
 
@@ -910,7 +897,7 @@ class DesktopPet:
         if not getattr(self, '_walk_loop_running', False):
             return
 
-        if not self.is_dragging and not self.fixed_position:
+        if not self.is_dragging:
             if self.follow_mouse:
                 self._do_follow_mouse()
             elif self.is_walking:
@@ -1034,16 +1021,14 @@ class DesktopPet:
             self.say("好哒~")
 
     def toggle_fixed(self):
-        """切换固定位置"""
+        """切换固定画面（停止自动切换动画）"""
         self.fixed_position = not self.fixed_position
         if self.fixed_position:
-            self.is_walking = False
-            self.follow_mouse = False
             self.config['fixed_position'] = True
-            self.say("不动了~ 📌")
+            self.say("画面固定了~ 🖼️")
         else:
             self.config['fixed_position'] = False
-            self.say("好的~")
+            self.say("继续切换~")
         self.save_config()
         if hasattr(self, 'fixed_var'):
             self.fixed_var.set(self.fixed_position)
@@ -1062,9 +1047,6 @@ class DesktopPet:
 
         # 双击
         self.canvas.bind('<Double-Button-1>', lambda e: self.next_anim())
-
-        # 鼠标悬停说话
-        self.canvas.bind('<Enter>', lambda e: self.random_speak())
 
         # 键盘快捷键
         self.root.bind('<Left>', lambda e: self.prev_anim())
@@ -1201,9 +1183,6 @@ class DesktopPet:
 
     def _on_fixed_toggle(self):
         self.fixed_position = self.fixed_var.get()
-        if self.fixed_position:
-            self.is_walking = False
-            self.follow_mouse = False
         self.config['fixed_position'] = self.fixed_position
         self.save_config()
 
