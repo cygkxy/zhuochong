@@ -43,6 +43,8 @@ DEFAULT_CONFIG = {
     'auto_walk': True,
     'switch_interval': 5000,
     'follow_mouse': False,
+    'main_gif': 0,
+    'main_gif_chance': 70,
     # 气泡设置
     'bubble_color': '#2a2a4a',
     'bubble_text_max': 120,
@@ -213,6 +215,8 @@ class DesktopPet:
         self.auto_walk = self.config['auto_walk']
         self.switch_interval = self.config['switch_interval']
         self.follow_mouse = self.config['follow_mouse']
+        self.main_gif = self.config.get('main_gif', 0)
+        self.main_gif_chance = self.config.get('main_gif_chance', 70)
         self.bubble_color = self.config.get('bubble_color', '#2a2a4a')
         self.bubble_text_max = self.config.get('bubble_text_max', 80)
         self.chat_key = self.config.get('chat_key', 'c')
@@ -327,6 +331,7 @@ class DesktopPet:
             ("💬  对话", self.show_chat),
             ("⏭️  切换动作", self.next_anim),
             ("🎲  随机表情", self.random_anim),
+            ("⭐  设为主形象", self.set_main_gif),
             None,
             ("⚙️  设置", self.toggle_settings),
             None,
@@ -489,6 +494,26 @@ class DesktopPet:
         menu.bind('<<ComboboxSelected>>',
                   lambda e: self._on_interval(menu.get()))
         menu.pack(side='left', padx=(4, 0))
+
+        # 主形象 + 随机概率
+        r_main = _make_row()
+        _row_label(r_main, "主形象")
+        main_name = STATE_LABELS[self.main_gif % len(STATE_LABELS)]
+        self.main_gif_name = tk.Label(r_main, text=main_name, fg=THEME['accent'],
+                                       bg=THEME['surface'],
+                                       font=("Microsoft YaHei", 10, "bold"))
+        self.main_gif_name.pack(side='left', padx=(4, 0))
+        tk.Label(r_main, text="概率", fg=THEME['text_muted'], bg=THEME['surface'],
+                 font=("Microsoft YaHei", 9)).pack(side='left', padx=(14, 2))
+        self.main_chance_var = tk.IntVar(value=self.main_gif_chance)
+        self.main_chance_label = tk.Label(r_main, text=f"{self.main_gif_chance}%",
+                                           fg=THEME['text_muted'], bg=THEME['surface'],
+                                           font=("Microsoft YaHei", 9), width=4, anchor='e')
+        self.main_chance_label.pack(side='right', padx=(0, 10))
+        ttk.Scale(r_main, from_=10, to=100, orient='horizontal',
+                  variable=self.main_chance_var,
+                  command=self._on_main_chance).pack(
+            side='left', fill='x', expand=True, padx=(4, 4))
 
         # ─── 气泡 ───
         _section_header("气泡")
@@ -731,6 +756,16 @@ class DesktopPet:
         idx = random.randint(0, len(GIF_NAMES) - 1)
         self.switch_gif(idx)
 
+    def set_main_gif(self):
+        """将当前动画设为主形象"""
+        self.main_gif = self.current_idx
+        self.config['main_gif'] = self.main_gif
+        self.save_config()
+        name = STATE_LABELS[self.main_gif % len(STATE_LABELS)]
+        if hasattr(self, 'main_gif_name'):
+            self.main_gif_name.configure(text=name)
+        self.say(f"设为主形象: {name} ⭐")
+
     def say(self, text):
         """显示对话气泡（独立窗口，位于宠物上方）"""
         # 关闭旧气泡
@@ -855,10 +890,14 @@ class DesktopPet:
         if not getattr(self, '_auto_switch_running', False):
             return
         if self.switch_interval > 0:
-            self.next_anim()
+            if random.randint(0, 99) < self.main_gif_chance:
+                self.switch_gif(self.main_gif)
+            else:
+                idx = random.randint(0, len(GIF_NAMES) - 1)
+                self.switch_gif(idx)
             self.root.after(self.switch_interval, self._do_auto_switch)
         else:
-            self.root.after(1000, self._do_auto_switch)  # 不切换也保持轮询
+            self.root.after(1000, self._do_auto_switch)
 
     def stop_auto_switch(self):
         self._auto_switch_running = False
@@ -1141,6 +1180,12 @@ class DesktopPet:
     def _on_auto_walk(self):
         self.auto_walk = self.walk_var.get()
         self.config['auto_walk'] = self.auto_walk
+        self.save_config()
+
+    def _on_main_chance(self, val):
+        self.main_gif_chance = int(float(val))
+        self.main_chance_label.configure(text=f"{self.main_gif_chance}%")
+        self.config['main_gif_chance'] = self.main_gif_chance
         self.save_config()
 
     def _on_interval(self, text):
