@@ -507,38 +507,38 @@ class DesktopPet:
         # 气泡颜色（色块选择）
         r5 = _make_row()
         _row_label(r5, "颜色")
-        colors = {"紫色": "#2a2a4a", "蓝色": "#1a3a6a", "绿色": "#1a4a2a",
-                  "红色": "#5a2a2a", "粉色": "#5a2a4a", "橙色": "#5a3a1a",
-                  "青色": "#1a4a4a", "深灰": "#333333"}
+        colors = [("紫色", "#2a2a4a"), ("蓝色", "#1a3a6a"), ("绿色", "#1a4a2a"),
+                  ("红色", "#5a2a2a"), ("粉色", "#5a2a4a"), ("橙色", "#5a3a1a"),
+                  ("青色", "#1a4a4a"), ("深灰", "#333333")]
+        colors_dict = dict(colors)
         current_color_name = "紫色"
-        for name, code in colors.items():
+        for name, code in colors:
             if code == self.bubble_color:
                 current_color_name = name
                 break
-        # 当前选中的颜色名（用于 hover 提示）
         self._bubble_sel_name = current_color_name
         # 色块行
         swatch_row = tk.Frame(r5, bg=THEME['surface'])
         swatch_row.pack(side='left', fill='x', expand=True, padx=(4, 8))
-        for cname, chex in colors.items():
+        self._color_btns = []  # (outer_frame, name)
+        for cname, chex in colors:
             is_active = (cname == current_color_name)
             outer = tk.Frame(swatch_row, bg=THEME['accent'] if is_active else THEME['surface'],
-                             bd=0, relief='flat')
+                             cursor='hand2')
             outer.pack(side='left', padx=2)
-            chip = tk.Frame(outer, bg=chex, width=20, height=20, bd=0, relief='flat')
+            chip = tk.Frame(outer, bg=chex, width=20, height=20)
             chip.pack(padx=2, pady=2)
-            chip.bind('<Button-1>', lambda e, n=cname, h=chex: self._on_pick_color(n, h))
-            chip.bind('<Enter>', lambda e, n=cname, o=outer: o.configure(bg=THEME['accent']))
-            chip.bind('<Leave>', lambda e, n=cname, o=outer, act=is_active:
-                      o.configure(bg=THEME['accent'] if act else THEME['surface']))
+            # 整个 outer 点击
+            outer.bind('<Button-1>', lambda e, n=cname: self._pick_color(n))
+            chip.bind('<Button-1>', lambda e, n=cname: self._pick_color(n))
             if is_active:
-                # 选中标记
                 tk.Label(outer, text="✓", fg='white', bg=chex,
                          font=("Microsoft YaHei", 8)).pack(padx=2, pady=0)
+            self._color_btns.append((outer, cname))
 
         self.bubble_color_var = tk.StringVar(value=current_color_name)
         self.color_preview = tk.Canvas(r5, width=18, height=18,
-                                        bg=colors[current_color_name],
+                                        bg=colors_dict[current_color_name],
                                         highlightthickness=0, bd=0)
         self.color_preview.pack(side='left', padx=(0, 8))
 
@@ -1194,15 +1194,31 @@ class DesktopPet:
             self.api_base_var.set('https://api.deepseek.com')
             self.api_model_var.set('deepseek-chat')
 
-    def _on_pick_color(self, name, hex_color):
+    def _pick_color(self, name):
         """色块点击选择气泡颜色"""
-        self.bubble_color = hex_color
+        chex = dict([("紫色", "#2a2a4a"), ("蓝色", "#1a3a6a"), ("绿色", "#1a4a2a"),
+                     ("红色", "#5a2a2a"), ("粉色", "#5a2a4a"), ("橙色", "#5a3a1a"),
+                     ("青色", "#1a4a4a"), ("深灰", "#333333")])[name]
+        self.bubble_color = chex
         self.bubble_color_var.set(name)
-        self.config['bubble_color'] = hex_color
+        self.config['bubble_color'] = chex
         self.save_config()
-        # 刷新设置面板颜色预览
+        # 刷新颜色预览
         if hasattr(self, 'color_preview'):
-            self.color_preview.configure(bg=hex_color)
+            self.color_preview.configure(bg=chex)
+        # 更新选中状态（移动 ✓ 标记）
+        if hasattr(self, '_color_btns'):
+            for outer, cname in self._color_btns:
+                for child in outer.winfo_children():
+                    if isinstance(child, tk.Label) and child.cget('text') == '✓':
+                        child.destroy()
+                if cname == name:
+                    # 在新选中色块上加 ✓
+                    tk.Label(outer, text="✓", fg='white', bg=chex,
+                             font=("Microsoft YaHei", 8)).pack(padx=2, pady=0)
+                    outer.configure(bg=THEME['accent'])
+                else:
+                    outer.configure(bg=THEME['surface'])
 
     def _on_proactive_toggle(self):
         self.proactive_chat = self.proactive_var.get()
