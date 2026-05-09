@@ -1506,7 +1506,7 @@ class DesktopPet:
         t = threading.Thread(target=self._call_proactive_api, args=(prompt,), daemon=True)
         t.start()
 
-    def _call_proactive_api(self, text):
+    def _call_proactive_api(self, text, retry=0):
         """主动说话（单轮，无历史）"""
         try:
             system = self.api_system_prompt + '\n\n' + self._time_context()
@@ -1514,7 +1514,7 @@ class DesktopPet:
                 [{"role": "user", "content": text}],
                 system, max_tokens=80, temperature=0.9, timeout=15,
             )
-            self.root.after(0, lambda: self._handle_proactive_response(reply))
+            self.root.after(0, lambda r=reply: self._handle_proactive_response(r, retry))
         except Exception as e:
             self._thinking = False
             if hasattr(self, '_proactive_timeout'):
@@ -1529,13 +1529,21 @@ class DesktopPet:
             self._thinking = False
             self._schedule_next_proactive()
 
-    def _handle_proactive_response(self, reply):
+    def _handle_proactive_response(self, reply, retry=0):
         self._thinking = False
         if hasattr(self, '_proactive_timeout'):
             self.root.after_cancel(self._proactive_timeout)
         if not reply or not reply.strip():
-            reply = random.choice(SPEECHES)
-        self.say(reply)
+            if retry < 2:
+                self._thinking = True
+                prompt = "请根据你的人格设定，说一句简短可爱的话（不超过30字）"
+                t = threading.Thread(
+                    target=self._call_proactive_api,
+                    args=(prompt, retry + 1), daemon=True,
+                )
+                t.start()
+                return
+        self.say(reply or '...')
         self.switch_gif(random.randint(0, len(GIF_NAMES) - 1))
         self._schedule_next_proactive()
 
