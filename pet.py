@@ -1482,7 +1482,8 @@ class DesktopPet:
             self.chat_history.append(("assistant", reply))
             self.root.after(0, lambda: self._handle_api_response(reply))
         except Exception as e:
-            self.root.after(0, lambda: self._handle_api_error(str(e)))
+            err = str(e)
+            self.root.after(0, lambda: self._handle_api_error(err))
 
     def _handle_api_response(self, reply):
         self._thinking = False
@@ -1655,7 +1656,8 @@ class DesktopPet:
             self.chat_history.append(("assistant", reply))
             self.root.after(0, lambda: self._handle_api_response(reply))
         except Exception as e:
-            self.root.after(0, lambda: self._handle_api_error(str(e)))
+            err = str(e)
+            self.root.after(0, lambda: self._handle_api_error(err))
 
     # ─── 配置持久化 ──────────────────────────────
 
