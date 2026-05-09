@@ -383,8 +383,8 @@ class DesktopPet:
                  fg=THEME['text'], bg=THEME['bg'],
                  font=("Microsoft YaHei", 14, "bold")).pack(side='left', padx=(16, 0))
         close_btn = tk.Label(title_bar, text="✕", fg=THEME['text_muted'], bg=THEME['bg'],
-                              cursor="hand2", font=("Microsoft YaHei", 14), padx=(0, 14))
-        close_btn.pack(side='right')
+                              cursor="hand2", font=("Microsoft YaHei", 14))
+        close_btn.pack(side='right', padx=(0, 14))
         close_btn.bind('<Enter>', lambda e: close_btn.configure(fg=THEME['text']))
         close_btn.bind('<Leave>', lambda e: close_btn.configure(fg=THEME['text_muted']))
         close_btn.bind('<Button-1>', lambda e: self.toggle_settings())
