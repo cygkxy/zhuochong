@@ -119,28 +119,28 @@ SPEECHES = [
 TRANSPARENT_COLOR = "#000001"  # 透明色
 WINDOW_SIZE = 240  # 窗口固定尺寸（画布大小）
 
-# ─── 主题色（低对比半透明感） ─────────────────────
+# ─── 主题色（纯白背景） ──────────────────────────
 THEME = {
-    'bg': '#0f111a',
-    'surface': '#161b28',
-    'surface_hover': '#1c2333',
-    'surface_active': '#1e293b',
-    'accent': '#22d3ee',
-    'accent_hover': '#38e0ff',
-    'accent_dark': '#0891b2',
-    'accent2': '#7c3aed',
+    'bg': '#ffffff',
+    'surface': '#f5f5f5',
+    'surface_hover': '#ebebeb',
+    'surface_active': '#e0e0e0',
+    'accent': '#3b82f6',
+    'accent_hover': '#60a5fa',
+    'accent_dark': '#2563eb',
+    'accent2': '#8b5cf6',
     'accent3': '#06b6d4',
-    'text': '#e2e8f0',
-    'text_sec': '#8892a8',
-    'text_muted': '#3d4a5c',
-    'border': '#1a2230',
-    'border_light': '#232e3e',
-    'input_bg': '#0d1117',
+    'text': '#1a1a1a',
+    'text_sec': '#4a4a4a',
+    'text_muted': '#999999',
+    'border': '#d4d4d4',
+    'border_light': '#e5e5e5',
+    'input_bg': '#fafafa',
     'success': '#10b981',
     'danger': '#ef4444',
     'warning': '#f59e0b',
-    'scrollbar_bg': '#0f111a',
-    'scrollbar_fg': '#1a2230',
+    'scrollbar_bg': '#e8e8e8',
+    'scrollbar_fg': '#cccccc',
 }
 
 
@@ -1268,9 +1268,9 @@ class DesktopPet:
         self.save_config()
         self.chat_history = []
         if self.api_ready:
-            self.api_status_label.configure(text="✅ 已保存", fg='#4CAF50')
+            self.api_status_label.configure(text="✅ 已保存", fg=THEME['success'])
         else:
-            self.api_status_label.configure(text="⚠️ 请输入 API Key", fg='#FF9800')
+            self.api_status_label.configure(text="⚠️ 请输入 API Key", fg=THEME['warning'])
         self.root.after(2000, lambda: self.api_status_label.configure(text=''))
 
     # ─── 对话窗口 ────────────────────────────────────
@@ -1461,7 +1461,7 @@ class DesktopPet:
         if hasattr(self, 'thinking_label') and self.thinking_label.winfo_exists():
             self.thinking_label.configure(text="🤔 思考中...")
         if hasattr(self, 'send_btn') and self.send_btn.winfo_exists():
-            self.send_btn.configure(text="思考中...", bg='#555')
+            self.send_btn.configure(text="思考中...", bg=THEME['text_muted'])
         self.say(text)
         if self.web_search:
             t = threading.Thread(target=self._call_api_with_search, args=(text,), daemon=True)
@@ -1487,7 +1487,7 @@ class DesktopPet:
         if hasattr(self, 'thinking_label') and self.thinking_label.winfo_exists():
             self.thinking_label.configure(text="")
         if hasattr(self, 'send_btn') and self.send_btn.winfo_exists():
-            self.send_btn.configure(text="发送 (Enter)", bg='#3a3a6a')
+            self.send_btn.configure(text="发送 (Enter)", bg=THEME['accent_dark'])
         self.say(reply)
         self.switch_gif(0)
 
@@ -1496,7 +1496,7 @@ class DesktopPet:
         if hasattr(self, 'thinking_label') and self.thinking_label.winfo_exists():
             self.thinking_label.configure(text="")
         if hasattr(self, 'send_btn') and self.send_btn.winfo_exists():
-            self.send_btn.configure(text="发送 (Enter)", bg='#3a3a6a')
+            self.send_btn.configure(text="发送 (Enter)", bg=THEME['accent_dark'])
         short = error_msg[:40] + '...' if len(error_msg) > 40 else error_msg
         self.say(f"出错了: {short}")
 
