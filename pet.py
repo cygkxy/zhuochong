@@ -106,13 +106,13 @@ STATE_COLORS = [
 ]
 
 SPEECHES = [
-    "嘿嘿~", "今天好开心！", "有点困了呢…",
+    "今天好开心！", "有点困了呢…",
     "你好呀！", "陪我玩~", "嗯…在想事情",
     "哇！", "好无聊啊…", "喜欢！",
-    "嘿嘿嘿", "天气真好~", "想吃点东西…",
+    "嘿嘿~", "天气真好~", "想吃点东西…",
     "来追我呀！", "好棒！", "唔…",
     "你好！", "加油！", "休息一下吧",
-    "嘿嘿~", "好神奇哦！", "嗯嗯！",
+    "好神奇哦！", "嗯嗯！",
     "好厉害！", "再玩一会儿嘛~",
 ]
 
@@ -752,7 +752,7 @@ class DesktopPet:
 
         # 空内容保护
         if not text or not text.strip():
-            text = "嘿嘿~"
+            text = random.choice(SPEECHES)
 
         # 过长文本截断
         max_len = self.bubble_text_max
@@ -840,8 +840,8 @@ class DesktopPet:
         self.speech_win.geometry(f"+{bx}+{by}")
 
     def random_speak(self):
-        """随机说话"""
-        if random.random() > 0.2:
+        """随机说话（低概率触发，避免刷屏）"""
+        if random.random() > 0.06:
             return
         text = random.choice(SPEECHES)
         self.say(text)
@@ -1534,7 +1534,7 @@ class DesktopPet:
         if hasattr(self, '_proactive_timeout'):
             self.root.after_cancel(self._proactive_timeout)
         if not reply or not reply.strip():
-            reply = "嘿嘿~"
+            reply = random.choice(SPEECHES)
         self.say(reply)
         self.switch_gif(random.randint(0, len(GIF_NAMES) - 1))
         self._schedule_next_proactive()
