@@ -45,17 +45,17 @@ DEFAULT_CONFIG = {
     'follow_mouse': False,
     # 气泡设置
     'bubble_color': '#2a2a4a',
-    'bubble_text_max': 80,
+    'bubble_text_max': 120,
     'chat_key': 'c',
     'proactive_chat': False,
     'proactive_interval': 60,
     'proactive_random': True,
     'web_search': False,
     # API 配置
-    'api_provider': 'openai',
+    'api_provider': 'deepseek',
     'api_key': '',
-    'api_model': 'gpt-4o-mini',
-    'api_base': 'https://api.openai.com/v1',
+    'api_model': 'deepseek-v4-flash',
+    'api_base': 'https://api.deepseek.com',
     'api_system_prompt': '你是一个可爱的桌宠，请用简短可爱的语气回复，不超过50个字。',
 }
 
@@ -782,7 +782,7 @@ class DesktopPet:
             bubble_body, text=text,
             fg='white', bg=self.bubble_color,
             font=("Microsoft YaHei", 10),
-            wraplength=220,
+            wraplength=280,
             padx=14, pady=8,
         )
         label.pack()
