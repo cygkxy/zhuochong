@@ -1485,6 +1485,46 @@ class DesktopPet:
 
     # --- Proactive chat ---
 
+    def _proactive_prompt(self):
+        """根据时段生成多样化的主动说话 prompt"""
+        import datetime
+        hour = datetime.datetime.now().hour
+
+        prompts = [
+            "请根据你的人格设定，说一句简短可爱的话（不超过30字）",
+            "随意说点什么吧，符合你性格的（不超过30字）",
+            "你现在心情怎么样？说句话吧（不超过30字）",
+        ]
+
+        # 时段特定语气
+        if 6 <= hour < 9:
+            prompts.append("早上了，用可爱的语气说句早安吧（不超过25字）")
+        elif 9 <= hour < 12:
+            prompts.append("上午好呀，随意聊点什么吧（不超过30字）")
+        elif 12 <= hour < 14:
+            prompts.append("中午了，说句跟午饭或休息有关的话（不超过25字）")
+        elif 14 <= hour < 18:
+            prompts.append("下午好，说句轻松的话吧（不超过30字）")
+        elif 18 <= hour < 21:
+            prompts.append("晚上了，说句傍晚问候吧（不超过25字）")
+        elif 21 <= hour < 24:
+            prompts.append("夜深了，说句温柔的话吧（不超过20字）")
+        else:
+            prompts.append("深夜了，轻轻说一句就好（不超过15字）")
+
+        return random.choice(prompts)
+
+    def _proactive_context(self):
+        """构造最近聊天上下文（用于主动说话的连贯性）"""
+        if not self.chat_history:
+            return ''
+        recent = self.chat_history[-4:]
+        lines = []
+        for role, content in recent:
+            prefix = "你说" if role == 'assistant' else "对方说"
+            lines.append(f"{prefix}: {content}")
+        return '\n'.join(lines) + '\n'
+
     def _start_proactive_timer(self):
         if self._proactive_after:
             self.root.after_cancel(self._proactive_after)
@@ -1502,7 +1542,11 @@ class DesktopPet:
             return
         self._thinking = True
         self._proactive_timeout = self.root.after(20000, self._unstick_thinking)
-        prompt = "请根据你的人格设定，说一句简短可爱的话（不超过30字）"
+
+        ctx = self._proactive_context()
+        prompt = self._proactive_prompt()
+        if ctx:
+            prompt = f"最近对话:\n{ctx}\n请参考以上对话氛围，{prompt}"
         t = threading.Thread(target=self._call_proactive_api, args=(prompt,), daemon=True)
         t.start()
 
@@ -1515,12 +1559,10 @@ class DesktopPet:
                 system, max_tokens=80, temperature=0.9, timeout=15,
             )
             self.root.after(0, lambda r=reply: self._handle_proactive_response(r, retry))
-        except Exception as e:
+        except Exception:
             self._thinking = False
             if hasattr(self, '_proactive_timeout'):
                 self.root.after_cancel(self._proactive_timeout)
-            err = str(e)[:60]
-            self.root.after(0, lambda: self.say(f"主动说话失败: {err}"))
             self._schedule_next_proactive()
 
     def _unstick_thinking(self):
@@ -1536,7 +1578,7 @@ class DesktopPet:
         if not reply or not reply.strip():
             if retry < 2:
                 self._thinking = True
-                prompt = "请根据你的人格设定，说一句简短可爱的话（不超过30字）"
+                prompt = self._proactive_prompt()
                 t = threading.Thread(
                     target=self._call_proactive_api,
                     args=(prompt, retry + 1), daemon=True,
@@ -1547,6 +1589,7 @@ class DesktopPet:
             self._schedule_next_proactive()
             return
         self.say(reply)
+        self.switch_gif(random.randint(0, len(GIF_NAMES) - 1))
         self.switch_gif(random.randint(0, len(GIF_NAMES) - 1))
         self._schedule_next_proactive()
 
