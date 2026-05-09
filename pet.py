@@ -801,6 +801,8 @@ class DesktopPet:
         # 加载帧
         frames, durations = self.loader.load(name, self.size)
         if not frames:
+            # GIF 加载失败时显示占位图案
+            self._show_placeholder(idx)
             return
 
         self.frames = frames
@@ -813,6 +815,21 @@ class DesktopPet:
 
         # 播放第一帧
         self._play_frame()
+
+    def _show_placeholder(self, idx):
+        """GIF 加载失败时显示占位符"""
+        self.frames = []
+        c = WINDOW_SIZE // 2
+        r = min(self.size, WINDOW_SIZE - 20) // 2
+        color = STATE_COLORS[idx % len(STATE_COLORS)]
+        self.canvas.delete('placeholder')
+        self.canvas.create_oval(c - r, c - r, c + r, c + r,
+                                 fill=color, outline=THEME['accent'],
+                                 width=2, tags='placeholder')
+        label = STATE_LABELS[idx % len(STATE_LABELS)]
+        self.canvas.create_text(c, c, text=label[0],
+                                fill='white', font=("Microsoft YaHei", r // 2),
+                                tags='placeholder')
 
     def _play_frame(self):
         """播放当前帧并调度下一帧"""
