@@ -486,11 +486,18 @@ class DesktopPet:
 
         r4 = _make_row()
         _row_label(r4, "切换间隔")
-        self.interval_var = tk.StringVar(value=str(self.switch_interval // 1000))
-        intervals = ["不切换", "3秒", "5秒", "8秒", "15秒"]
-        menu = ttk.Combobox(r4, values=intervals,
+        interval_map = [0, 3000, 5000, 8000, 15000]
+        interval_labels = ["不切换", "3秒", "5秒", "8秒", "15秒"]
+        iv = self.switch_interval
+        idx = 1
+        for i, ms in enumerate(interval_map):
+            if ms == iv:
+                idx = i
+                break
+        self.interval_var = tk.StringVar(value=interval_labels[idx])
+        menu = ttk.Combobox(r4, values=interval_labels,
                             state='readonly', width=10)
-        menu.current(1)
+        menu.current(idx)
         menu.bind('<<ComboboxSelected>>',
                   lambda e: self._on_interval(menu.get()))
         menu.pack(side='left', padx=(4, 0))
@@ -761,15 +768,17 @@ class DesktopPet:
         self.main_gif = self.current_idx
         self.config['main_gif'] = self.main_gif
         self.save_config()
-        name = STATE_LABELS[self.main_gif % len(STATE_LABELS)]
         if hasattr(self, 'main_gif_var'):
-            self.main_gif_var.set(name)
-        self.say(f"设为主形象: {name} ⭐")
+            self.main_gif_var.set(str(self.main_gif + 1))
+        self.say(f"设为主形象: 第{self.main_gif + 1}号 ⭐")
 
     def _on_main_gif_select(self, e):
         """从下拉框选择主形象"""
-        name = self.main_gif_var.get()
-        idx = STATE_LABELS.index(name)
+        try:
+            idx = int(self.main_gif_var.get()) - 1
+            idx = max(0, min(idx, len(GIF_NAMES) - 1))
+        except:
+            idx = 0
         self.main_gif = idx
         self.config['main_gif'] = idx
         self.save_config()
