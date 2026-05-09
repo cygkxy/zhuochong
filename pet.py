@@ -750,9 +750,9 @@ class DesktopPet:
         # 关闭旧气泡
         self._hide_speech()
 
-        # 空内容保护
+        # 空内容不显示
         if not text or not text.strip():
-            text = random.choice(SPEECHES)
+            return
 
         # 过长文本截断
         max_len = self.bubble_text_max
@@ -1543,7 +1543,10 @@ class DesktopPet:
                 )
                 t.start()
                 return
-        self.say(reply or '...')
+            # 重试完仍为空，跳过本次
+            self._schedule_next_proactive()
+            return
+        self.say(reply)
         self.switch_gif(random.randint(0, len(GIF_NAMES) - 1))
         self._schedule_next_proactive()
 
