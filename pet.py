@@ -275,7 +275,7 @@ class DesktopPet:
         self.root = tk.Tk()
         self.root.title("Rainbow 桌宠")
 
-        # 窗口设置
+        # 窗口设置（透明背景，1px 边框确保可见）
         self.root.overrideredirect(True)
         self.root.attributes('-topmost', True)
         self.root.attributes('-transparentcolor', TRANSPARENT_COLOR)
@@ -363,14 +363,15 @@ class DesktopPet:
 
     def _build_ui(self):
         """构建界面"""
-        # 主画布（固定大小）
+        # 主画布（固定大小）— 1px 边框确保窗口始终可见
         self.canvas = tk.Canvas(
             self.root,
             width=WINDOW_SIZE,
             height=WINDOW_SIZE,
             bg=TRANSPARENT_COLOR,
-            highlightthickness=0,
+            highlightthickness=1,
             bd=0,
+            highlightbackground=THEME['border'],
         )
         self.canvas.pack()
 
