@@ -495,12 +495,12 @@ class DesktopPet:
                 idx = i
                 break
         self.interval_var = tk.StringVar(value=interval_labels[idx])
-        menu = ttk.Combobox(r4, values=interval_labels,
-                            state='readonly', width=10)
-        menu.current(idx)
-        menu.bind('<<ComboboxSelected>>',
-                  lambda e: self._on_interval(menu.get()))
-        menu.pack(side='left', padx=(4, 0))
+        self.interval_menu = ttk.Combobox(r4, values=interval_labels,
+                                          state='readonly', width=10)
+        self.interval_menu.current(idx)
+        self.interval_menu.bind('<<ComboboxSelected>>',
+                                lambda e: self._on_interval(self.interval_menu.get()))
+        self.interval_menu.pack(side='left', padx=(4, 0))
 
         # 主形象 + 随机概率
         r_main = _make_row()
@@ -764,16 +764,18 @@ class DesktopPet:
         self.switch_gif(idx)
 
     def set_main_gif(self):
-        """将当前动画设为主形象"""
+        """将当前动画设为主形象（自动关闭切换间隔）"""
         self.main_gif = self.current_idx
         self.config['main_gif'] = self.main_gif
         self.save_config()
         if hasattr(self, 'main_gif_var'):
             self.main_gif_var.set(str(self.main_gif + 1))
+        # 关闭切换间隔
+        self._disable_interval()
         self.say(f"设为主形象: 第{self.main_gif + 1}号 ⭐")
 
     def _on_main_gif_select(self, e):
-        """从下拉框选择主形象"""
+        """从下拉框选择主形象（自动关闭切换间隔）"""
         try:
             idx = int(self.main_gif_var.get()) - 1
             idx = max(0, min(idx, len(GIF_NAMES) - 1))
@@ -783,6 +785,16 @@ class DesktopPet:
         self.config['main_gif'] = idx
         self.save_config()
         self.switch_gif(idx)
+        # 关闭切换间隔
+        self._disable_interval()
+
+    def _disable_interval(self):
+        """将切换间隔设为不切换"""
+        self.switch_interval = 0
+        self.config['switch_interval'] = 0
+        self.save_config()
+        if hasattr(self, 'interval_menu'):
+            self.interval_menu.current(0)
 
     def say(self, text):
         """显示对话气泡（独立窗口，位于宠物上方）"""
@@ -1205,6 +1217,9 @@ class DesktopPet:
         self.main_chance_label.configure(text=f"{self.main_gif_chance}%")
         self.config['main_gif_chance'] = self.main_gif_chance
         self.save_config()
+        # 开启主形象时自动关闭切换间隔
+        if self.main_gif_chance > 0 and self.switch_interval != 0:
+            self._disable_interval()
 
     def _on_interval(self, text):
         if text == "不切换":
@@ -1212,6 +1227,11 @@ class DesktopPet:
         else:
             mapping = {"3秒": 3000, "5秒": 5000, "8秒": 8000, "15秒": 15000}
             ms = mapping.get(text, 5000)
+            # 开启切换间隔时关闭主形象
+            self.main_gif_chance = 0
+            self.main_chance_var.set(0)
+            self.main_chance_label.configure(text="0%")
+            self.config['main_gif_chance'] = 0
         self.switch_interval = ms
         self.config['switch_interval'] = ms
         self.save_config()
