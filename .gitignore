@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 build/
 pet_config.json
+memory/
+*.log
